@@ -25,11 +25,11 @@ async def running_command(ctx, run: bool = None):
 
 @bot.group(name="emojis", pass_context=True, invoke_without_command=True)
 async def emojis(ctx):
-    await emojis_list()
+    await emojis_list(ctx)
 
 @emojis.command(name="list")
 async def emojis_list(ctx):
-    await ctx.send(f"JoshGone is currently removing {', '.join(sorted(emojis))}.")
+    await ctx.send(f"JoshGone is currently removing {', '.join(sorted(map(str, emojis_set)))}.")
 
 @emojis.command(name="add")
 async def emojis_add(ctx, emoji: discord.Emoji):
@@ -43,11 +43,11 @@ async def emojis_remove(ctx, emoji: discord.Emoji):
 
 @bot.group(name="allow", pass_context=True, invoke_without_command=True)
 async def allow(ctx):
-    await allow_list()
+    await allow_list(ctx)
 
 @allow.command(name="list")
 async def allow_list(ctx):
-    await ctx.send(f"JoshGone is currently ignoring {', '.join(sorted(allow))}.")
+    await ctx.send(f"JoshGone is currently ignoring {', '.join(sorted(allow_set))}.")
 
 @allow.command(name="add")
 async def allow_add(ctx, arg):
