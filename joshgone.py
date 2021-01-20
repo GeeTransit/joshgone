@@ -1,117 +1,70 @@
 import os
 import discord
+from discord.ext import commands
 
-client = discord.Client()
+bot = commands.Bot(command_prefix="%joshgone ")
 running = False
-emojis = {"josh", "joshdeepfried"}
-allow = {"GeeTransit"}  # Don't remove emojis from these users
+emojis_set = set()
+allow_set = set()  # Don't remove emojis from these users
 
-@client.event
+@bot.event
 async def on_ready():
-    global emojis
-    names = emojis.copy()
-    emojis = set()
-    for emoji in client.emojis:
-        if emoji.name in names:
-            emojis.add(emoji)
-            names.discard(emoji.name)
-    print(f"JoshGone logged on as {client.user}.")
-    print(f"Removing {', '.join(sorted(emojis))}.")
-    print(f"Allowing {', '.join(sorted(allow))}.")
+    print(f"JoshGone logged on as {bot.user}.")
 
-@client.event
-async def on_message(message):
+@bot.command(name="running")
+async def running_command(ctx, run: bool = None):
     global running
-    if message.author == client.user:
-        return
-    if message.content.startswith("%joshgone"):
-        args = message.content.split()[1:]
-        if len(args) == 0:
-            await message.channel.send(f"JoshGone is currently {'running' if running else 'not running'}.")
-            return
-        if len(args) == 1:
-            [command] = args
-            if command == "help":
-                await message.channel.send(
-                    "Commands:\n"
-                    "%joshgone running [true|false]\n"
-                    "%joshgone emojis list\n"
-                    "%joshgone emojis (add|remove) name\n"
-                    "%joshgone allow list\n"
-                    "%joshgone allow (add|remove) name\n"
-                )
-                return
-            elif command == "emojis":
-                args = command, "list"
-            elif command == "allow":
-                args = command, "list"
-            elif command == "running":
-                await message.channel.send(f"JoshGone is currently {'running' if running else 'not running'}.")
-                return
-            elif command in ("true", "false"):
-                args = "running", command
-            else:
-                await message.channel.send(f"Unknown command {command}.")
-                return
-        if len(args) == 2:
-            [command, arg] = args
-            if command == "running":
-                if arg == "true":
-                    running = True
-                    await message.channel.send(f"JoshGone is now running.")
-                elif arg == "false":
-                    running = False
-                    await message.channel.send(f"JoshGone is now not running.")
-                else:
-                    await message.channel.send(f"Running command argument must be true or false, not {arg}.")
-                return
-            elif command == "emojis":
-                if arg == "list":
-                    await message.channel.send(f"JoshGone is currently removing {', '.join(sorted(emojis))}.")
-                else:
-                    await message.channel.send(f"Unknown {command} subcommand {arg}.")
-                return
-            elif command == "allow":
-                if arg == "list":
-                    await message.channel.send(f"JoshGone is currently ignoring {', '.join(sorted(allow))}.")
-                else:
-                    await message.channel.send(f"Unknown {command} subcommand {arg}.")
-                return
-        if len(args) == 3:
-            [command, subcommand, arg] = args
-            if command == "emojis":
-                if subcommand == "add":
-                    for emoji in client.emojis:
-                        if emoji.name == arg:
-                            emojis.add(emoji)
-                    await message.channel.send(f"Added {arg} to removal list.")
-                elif subcommand == "remove":
-                    for emoji in client.emojis:
-                        if emoji.name == arg:
-                            emojis.remove(emoji)
-                    await message.channel.send(f"Removed {arg} from removal list.")
-                else:
-                    await message.channel.send(f"Unknown {command} subcommand {subcommand}.")
-                return
-            elif command == "allow":
-                if subcommand == "add":
-                    allow.add(arg)
-                    await message.channel.send(f"Added {arg} to allow list.")
-                elif subcommand == "remove":
-                    allow.remove(arg)
-                    await message.channel.send(f"Removed {arg} from allow list.")
-                else:
-                    await message.channel.send(f"Unknown {command} subcommand {subcommand}.")
-                return
-        await message.channel.send(f"Unknown command %joshgone {' '.join(args)}.")
-        return
+    if run is None:
+        await ctx.send(f"JoshGone is currently {'running' if running else 'not running'}.")
+    elif run:
+        running = True
+        await ctx.send(f"JoshGone is now running.")
+    else:
+        running = False
+        await ctx.send(f"JoshGone is now not running.")
 
-@client.event
+@bot.group(name="emojis", pass_context=True, invoke_without_command=True)
+async def emojis(ctx):
+    await emojis_list()
+
+@emojis.command(name="list")
+async def emojis_list(ctx):
+    await ctx.send(f"JoshGone is currently removing {', '.join(sorted(emojis))}.")
+
+@emojis.command(name="add")
+async def emojis_add(ctx, emoji: discord.Emoji):
+    emojis_set.add(emoji)
+    await ctx.send(f"Added {emoji} to removal list.")
+
+@emojis.command(name="remove")
+async def emojis_remove(ctx, emoji: discord.Emoji):
+    emojis_set.remove(emoji)
+    await ctx.send(f"Removed {emoji} from removal list.")
+
+@bot.group(name="allow", pass_context=True, invoke_without_command=True)
+async def allow(ctx):
+    await allow_list()
+
+@allow.command(name="list")
+async def allow_list(ctx):
+    await ctx.send(f"JoshGone is currently ignoring {', '.join(sorted(allow))}.")
+
+@allow.command(name="add")
+async def allow_add(ctx, arg):
+    allow_set.add(arg)
+    await ctx.send(f"Added {arg} to allow list.")
+
+@allow.command(name="remove")
+async def allow_remove(ctx, arg):
+    allow_set.remove(arg)
+    await ctx.send(f"Removed {arg} from allow list.")
+
+@bot.event
 async def on_reaction_add(reaction, user):
     global running
-    if user == client.user:
+    if user == bot.user:
         return
-    if running and user.name not in allow and reaction.emoji in emojis:
+    if running and user.name not in allow_set and reaction.emoji in emojis_set:
         await reaction.remove(user)
 
-client.run(os.environ["JOSHGONE_TOKEN"])
+bot.run(os.environ["JOSHGONE_TOKEN"])
