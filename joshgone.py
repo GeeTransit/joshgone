@@ -2,7 +2,7 @@ import os
 import discord
 from discord.ext import commands
 
-bot = commands.Bot(command_prefix="%joshgone ")
+bot = commands.Bot(command_prefix=["%joshgone ", "%"])
 running = False
 emojis_set = set()
 allow_set = set()  # Don't remove emojis from these users
