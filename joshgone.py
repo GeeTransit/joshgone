@@ -32,14 +32,15 @@ async def emojis_list(ctx):
     await ctx.send(f"JoshGone is currently removing {', '.join(sorted(map(str, emojis_set)))}.")
 
 @emojis.command(name="add")
-async def emojis_add(ctx, emoji: discord.Emoji):
-    emojis_set.add(emoji)
-    await ctx.send(f"Added {emoji} to removal list.")
+async def emojis_add(ctx, *emojis: discord.Emoji):
+    emojis_set.update(emojis)
+    await ctx.send(f"Added {', '.join(map(str, emojis))} to removal list.")
 
 @emojis.command(name="remove")
-async def emojis_remove(ctx, emoji: discord.Emoji):
-    emojis_set.remove(emoji)
-    await ctx.send(f"Removed {emoji} from removal list.")
+async def emojis_remove(ctx, *emojis: discord.Emoji):
+    for emoji in emojis:
+        emojis_set.discard(emoji)
+    await ctx.send(f"Removed {', '.join(map(str, emojis))} from removal list.")
 
 @bot.group(name="allow", pass_context=True, invoke_without_command=True)
 async def allow(ctx):
@@ -50,14 +51,15 @@ async def allow_list(ctx):
     await ctx.send(f"JoshGone is currently ignoring {', '.join(sorted(allow_set))}.")
 
 @allow.command(name="add")
-async def allow_add(ctx, arg):
-    allow_set.add(arg)
-    await ctx.send(f"Added {arg} to allow list.")
+async def allow_add(ctx, *names):
+    allow_set.update(names)
+    await ctx.send(f"Added {names} to allow list.")
 
 @allow.command(name="remove")
-async def allow_remove(ctx, arg):
-    allow_set.remove(arg)
-    await ctx.send(f"Removed {arg} from allow list.")
+async def allow_remove(ctx, *names):
+    for name in names:
+        allow_set.discard(name)
+    await ctx.send(f"Removed {names} from allow list.")
 
 @bot.event
 async def on_reaction_add(reaction, user):
