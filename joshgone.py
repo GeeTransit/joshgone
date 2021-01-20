@@ -8,7 +8,16 @@ allow = {"GeeTransit"}  # Don't remove emojis from these users
 
 @client.event
 async def on_ready():
-    print(f"JoshGone logged on as {client.user}")
+    global emojis
+    names = emojis.copy()
+    emojis = set()
+    for emoji in client.emojis:
+        if emoji.name in names:
+            emojis.add(emoji)
+            names.discard(emoji.name)
+    print(f"JoshGone logged on as {client.user}.")
+    print(f"Removing {', '.join(sorted(emojis))}.")
+    print(f"Allowing {', '.join(sorted(allow))}.")
 
 @client.event
 async def on_message(message):
@@ -72,10 +81,14 @@ async def on_message(message):
             [command, subcommand, arg] = args
             if command == "emojis":
                 if subcommand == "add":
-                    emojis.add(arg)
+                    for emoji in client.emojis:
+                        if emoji.name == arg:
+                            emojis.add(emoji)
                     await message.channel.send(f"Added {arg} to removal list.")
                 elif subcommand == "remove":
-                    emojis.remove(arg)
+                    for emoji in client.emojis:
+                        if emoji.name == arg:
+                            emojis.remove(emoji)
                     await message.channel.send(f"Removed {arg} from removal list.")
                 else:
                     await message.channel.send(f"Unknown {command} subcommand {subcommand}.")
@@ -98,7 +111,7 @@ async def on_reaction_add(reaction, user):
     global running
     if user == client.user:
         return
-    if running and user.name not in allow and reaction.emoji.name in emojis:
+    if running and user.name not in allow and reaction.emoji in emojis:
         await reaction.remove(user)
 
 client.run(os.environ["JOSHGONE_TOKEN"])
