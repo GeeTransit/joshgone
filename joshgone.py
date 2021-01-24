@@ -1,4 +1,6 @@
 import os
+import typing
+
 import aiosqlite
 import discord
 from discord.ext import commands
@@ -11,8 +13,6 @@ bot = commands.Bot(command_prefix=("%joshgone ", "%"), intents=intents)
 async def on_ready():
     print(f"JoshGone logged on as {bot.user}.")
     print(f"SQLite version is {aiosqlite.sqlite_version}.")
-    await bot.wait_until_ready()
-    print("Bot ready.")
 
 @bot.event
 async def on_guild_join(guild):
@@ -61,22 +61,35 @@ async def emojis_list(ctx):
         async with db.execute("SELECT emoji_id FROM removed_emoji WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
             async for row in cursor:
                 emoji_id = row[0]
+                if isinstance(emoji_id, str):
+                    removed_emojis.append(emoji_id)
                 if emoji_id in guild_emojis:
                     removed_emojis.append(guild_emojis[emoji_id])
         await ctx.send(f"JoshGone is currently removing {', '.join(sorted(map(str, removed_emojis)))}.")
 
 @emojis.command(name="add")
-async def emojis_add(ctx, *emojis: discord.Emoji):
+async def emojis_add(ctx, *emojis: typing.Union[discord.Emoji, str]):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
-        values = [(ctx.guild.id, emoji.id) for emoji in emojis]
+        values = []
+        for emoji in emojis:
+            if isinstance(emoji, str):
+                values.append((ctx.guild.id, emoji))
+            elif emoji.is_usable() and emoji.id is not None:
+                values.append((ctx.guild.id, emoji.id))
         await db.executemany("INSERT INTO removed_emoji VALUES (?, ?) ON CONFLICT DO NOTHING;", values)
         await db.commit()
         await ctx.send(f"Added {', '.join(map(str, emojis))} to removal list.")
 
 @emojis.command(name="remove")
-async def emojis_remove(ctx, *emojis: discord.Emoji):
+async def emojis_remove(ctx, *emojis: typing.Union[discord.Emoji, str]):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
-        values = [(ctx.guild.id, emoji.id) for emoji in emojis]
+        values = []
+        for emoji in emojis:
+            if isinstance(emoji, str):
+                if len(emoji) == 1:
+                    values.append((ctx.guild.id, emoji))
+            elif emoji.is_usable() and emoji.id is not None:
+                values.append((ctx.guild.id, emoji.id))
         await db.executemany("DELETE FROM removed_emoji WHERE server_id = ? AND emoji_id = ?;", values)
         await db.commit()
         await ctx.send(f"Removed {', '.join(map(str, emojis))} from removal list.")
@@ -130,7 +143,7 @@ async def on_reaction_add(reaction, user):
         async with db.execute("SELECT running FROM server WHERE server_id = ? LIMIT 1;", (reaction.message.guild.id,)) as cursor:
             if not (row := await cursor.fetchone()) or not row[0]:
                 return
-        async with db.execute("SELECT * FROM removed_emoji WHERE server_id = ? AND emoji_id = ? LIMIT 1;", (reaction.message.guild.id, reaction.emoji.id)) as cursor:
+        async with db.execute("SELECT * FROM removed_emoji WHERE server_id = ? AND emoji_id = ? LIMIT 1;", (reaction.message.guild.id, reaction.emoji if isinstance(reaction.emoji, str) else reaction.emoji.id)) as cursor:
             if not await cursor.fetchone():
                 return
         async with db.execute("SELECT * FROM allowed_user WHERE server_id = ? AND user_id = ? LIMIT 1;", (reaction.message.guild.id, user.id)) as cursor:
