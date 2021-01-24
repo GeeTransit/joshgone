@@ -73,8 +73,9 @@ async def emojis_add(ctx, *emojis: typing.Union[discord.Emoji, str]):
         values = []
         for emoji in emojis:
             if isinstance(emoji, str):
-                values.append((ctx.guild.id, emoji))
-            elif emoji.is_usable() and emoji.id is not None:
+                if len(emoji) == 1:
+                    values.append((ctx.guild.id, emoji))
+            elif emoji.id is not None:
                 values.append((ctx.guild.id, emoji.id))
         await db.executemany("INSERT INTO removed_emoji VALUES (?, ?) ON CONFLICT DO NOTHING;", values)
         await db.commit()
@@ -86,9 +87,8 @@ async def emojis_remove(ctx, *emojis: typing.Union[discord.Emoji, str]):
         values = []
         for emoji in emojis:
             if isinstance(emoji, str):
-                if len(emoji) == 1:
-                    values.append((ctx.guild.id, emoji))
-            elif emoji.is_usable() and emoji.id is not None:
+                values.append((ctx.guild.id, emoji))
+            elif emoji.id is not None:
                 values.append((ctx.guild.id, emoji.id))
         await db.executemany("DELETE FROM removed_emoji WHERE server_id = ? AND emoji_id = ?;", values)
         await db.commit()
