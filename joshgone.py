@@ -1,3 +1,5 @@
+import asyncio
+import asyncio.__main__ as asyncio_main
 import os
 import typing
 
@@ -8,11 +10,39 @@ from discord.ext import commands
 intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix=("%joshgone ", "%"), intents=intents)
+thread = None
+
+async def _init_repl():
+    global thread
+    if thread is not None:
+        return
+    variables = globals()
+    loop = asyncio_main.loop = asyncio.get_running_loop()
+    asyncio_main.console = asyncio_main.AsyncIOInteractiveConsole(variables, loop)
+    asyncio_main.repl_future_interrupted = False
+    asyncio_main.repl_future = None
+    thread = asyncio_main.REPLThread()
+    thread.daemon = True
+    thread.start()
+
+async def self_process(text_channel, content):
+    message = await text_channel.send(content)
+    return await process(message)
+
+async def process(message):
+    old_skip_check = bot._skip_check
+    bot._skip_check = lambda x, y: False if x == y else old_skip_check(x, y)
+    try:
+        ctx = await bot.get_context(message)
+        return await bot.invoke(ctx)
+    finally:
+        bot._skip_check = old_skip_check
 
 @bot.event
 async def on_ready():
     print(f"JoshGone logged on as {bot.user}.")
     print(f"SQLite version is {aiosqlite.sqlite_version}.")
+    await _init_repl()
 
 @bot.event
 async def on_guild_join(guild):
