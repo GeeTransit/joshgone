@@ -1,11 +1,13 @@
 import asyncio
 import asyncio.__main__ as asyncio_main
 import os
+import re
 import typing
 
 import aiosqlite
 import discord
 from discord.ext import commands
+from discord.utils import get
 
 intents = discord.Intents.default()
 intents.members = True
@@ -105,6 +107,9 @@ async def emojis_add(ctx, *emojis: typing.Union[discord.Emoji, str]):
             if isinstance(emoji, str):
                 if len(emoji) == 1:
                     values.append((ctx.guild.id, emoji))
+                else:
+                    print(repr(emoji))
+                    print(*map(ord, emoji))
             elif emoji.id is not None:
                 values.append((ctx.guild.id, emoji.id))
         await db.executemany("INSERT INTO removed_emoji VALUES (?, ?) ON CONFLICT DO NOTHING;", values)
@@ -181,8 +186,66 @@ async def on_reaction_add(reaction, user):
                 return
         await reaction.remove(user)
 
+ran = {}
+@bot.before_invoke
+async def before_invoke(ctx):
+    ran[ctx.message] = True
+
+@bot.event
+async def on_message(message):
+    if message.guild is None:
+        return
+    await bot.process_commands(message)
+    if ran.pop(message, False):
+        return
+    author = message.author
+    if author == bot.user:
+        return
+    async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+        async with db.execute("SELECT running FROM server WHERE server_id = ? LIMIT 1;", (message.guild.id,)) as cursor:
+            if not (row := await cursor.fetchone()) or not row[0]:
+                return
+        async with db.execute("SELECT * FROM allowed_user WHERE server_id = ? AND user_id = ? LIMIT 1;", (message.guild.id, author.id)) as cursor:
+            if await cursor.fetchone():
+                return
+        for match in re.finditer(r"(?<!\\)<(a|):(\w+):(\d+)>", message.content):
+            animated, name, id = match.groups()
+            async with db.execute("SELECT * FROM removed_emoji WHERE server_id = ? AND emoji_id = ? LIMIT 1;", (message.guild.id, id)) as cursor:
+                if await cursor.fetchone():
+                    break
+        else:
+            return
+        await author.send(f"Message deleted: ```\n{message.content}\n```")
+        await message.delete()
+
+@bot.event
+async def on_message_edit(before, after):
+    if after.guild is None:
+        return
+    # await bot.process_commands(message)
+    # if ran.pop(message, False):
+        # return
+    author = after.author
+    if author == bot.user:
+        return
+    async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+        async with db.execute("SELECT running FROM server WHERE server_id = ? LIMIT 1;", (after.guild.id,)) as cursor:
+            if not (row := await cursor.fetchone()) or not row[0]:
+                return
+        async with db.execute("SELECT * FROM allowed_user WHERE server_id = ? AND user_id = ? LIMIT 1;", (after.guild.id, author.id)) as cursor:
+            if await cursor.fetchone():
+                return
+        for match in re.finditer(r"(?!<\\)<(a|):(\w+):(\d+)>", after.content):
+            animated, name, id = match.groups()
+            async with db.execute("SELECT * FROM removed_emoji WHERE server_id = ? AND emoji_id = ? LIMIT 1;", (after.guild.id, id)) as cursor:
+                if await cursor.fetchone():
+                    break
+        else:
+            return
+        await author.send(f"Message deleted: ```\n{after.content}\n```")
+        await after.delete()
+
 import math
-import re
 NUM = r"\d+(?:\.\d*)?"
 VAR = r"(?!\d)\w"
 SIGN = r"[+-]"
