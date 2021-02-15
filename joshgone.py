@@ -215,7 +215,7 @@ async def on_message(message):
                     break
         else:
             return
-        await author.send(f"Message deleted: ```\n{message.content}\n```")
+        await author.send(f"Message deleted:\n```\n{message.content}\n```")
         await message.delete()
 
 @bot.event
@@ -242,8 +242,13 @@ async def on_message_edit(before, after):
                     break
         else:
             return
-        await author.send(f"Message deleted: ```\n{after.content}\n```")
+        await author.send(f"Message deleted:\n```\n{after.content}\n```")
         await after.delete()
+
+@bot.event
+async def on_command_error(ctx, error):
+    gee = get(bot.users, name="GeeTransit")
+    await gee.send(f"Error:\n```{error!r}```")
 
 import math
 NUM = r"\d+(?:\.\d*)?"
