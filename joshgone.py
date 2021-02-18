@@ -245,6 +245,13 @@ async def on_message_edit(before, after):
         await author.send(f"Message deleted:\n```\n{after.content}\n```")
         await after.delete()
 
+BRUCECHANT = "okay guys so break is over stop playing games stop watching youtube stop doing cell phone stop watching anime"
+@bot.command(name="brucechant", aliases=["b", "bc", "🅱️", "🇧"])
+async def brucechant_commant(ctx):
+    for _ in range(5):
+        await ctx.send(BRUCECHANT)
+        await asyncio.sleep(0.5)
+
 @bot.event
 async def on_command_error(ctx, error):
     gee = get(bot.users, name="GeeTransit")
