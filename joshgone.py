@@ -64,7 +64,7 @@ async def reinit_command(ctx):
     await on_guild_join(ctx.guild)
     await ctx.send("Reinitialized JoshGone.")
 
-@bot.command(name="running")
+@bot.command(name="running", aliases=["r"])
 async def running_command(ctx, run: bool = None):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
         if run is None:
@@ -81,11 +81,11 @@ async def running_command(ctx, run: bool = None):
             await db.commit()
             await ctx.send(f"JoshGone is now {'' if run else 'not '}running.")
 
-@bot.group(name="emojis", pass_context=True, invoke_without_command=True)
+@bot.group(name="emojis", aliases=["e"], pass_context=True, invoke_without_command=True)
 async def emojis(ctx):
     await emojis_list(ctx)
 
-@emojis.command(name="list")
+@emojis.command(name="list", aliases=["l"])
 async def emojis_list(ctx):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
         removed_emojis = []
@@ -99,7 +99,7 @@ async def emojis_list(ctx):
                     removed_emojis.append(guild_emojis[emoji_id])
         await ctx.send(f"JoshGone is currently removing {', '.join(sorted(map(str, removed_emojis)))}.")
 
-@emojis.command(name="add")
+@emojis.command(name="add", aliases=["a"])
 async def emojis_add(ctx, *emojis: typing.Union[discord.Emoji, str]):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
         values = []
@@ -116,7 +116,7 @@ async def emojis_add(ctx, *emojis: typing.Union[discord.Emoji, str]):
         await db.commit()
         await ctx.send(f"Added {', '.join(map(str, emojis))} to removal list.")
 
-@emojis.command(name="remove")
+@emojis.command(name="remove", aliases=["r"])
 async def emojis_remove(ctx, *emojis: typing.Union[discord.Emoji, str]):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
         values = []
@@ -129,25 +129,25 @@ async def emojis_remove(ctx, *emojis: typing.Union[discord.Emoji, str]):
         await db.commit()
         await ctx.send(f"Removed {', '.join(map(str, emojis))} from removal list.")
 
-@emojis.command(name="clear")
+@emojis.command(name="clear", aliases=["c"])
 async def emojis_clear(ctx):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
         await db.execute("DELETE FROM removed_emoji WHERE server_id = ?;", (ctx.guild.id,))
         await db.commit()
         await ctx.send("Cleared removal list.")
 
-@bot.group(name="allow", pass_context=True, invoke_without_command=True)
+@bot.group(name="allow", aliases=["a"], pass_context=True, invoke_without_command=True)
 async def allow(ctx):
     await allow_list(ctx)
 
-@allow.command(name="list")
+@allow.command(name="list", aliases=["l"])
 async def allow_list(ctx):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
         async with db.execute("SELECT user_id FROM allowed_user WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
             users = [ctx.guild.get_member(row[0]) async for row in cursor]
         await ctx.send(f"JoshGone is currently ignoring {', '.join(user.name for user in users)}.")
 
-@allow.command(name="add")
+@allow.command(name="add", aliases=["a"])
 async def allow_add(ctx, *users: discord.Member):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
         values = [(ctx.guild.id, user.id) for user in users]
@@ -155,7 +155,7 @@ async def allow_add(ctx, *users: discord.Member):
         await db.commit()
         await ctx.send(f"Added {', '.join(user.name for user in users)} to allow list.")
 
-@allow.command(name="remove")
+@allow.command(name="remove", aliases=["r"])
 async def allow_remove(ctx, *users: discord.Member):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
         values = [(user.id, ctx.guild.id) for user in users]
@@ -163,7 +163,7 @@ async def allow_remove(ctx, *users: discord.Member):
         await db.commit()
         await ctx.send(f"Removed {', '.join(user.name for user in users)} from allow list.")
 
-@allow.command(name="clear")
+@allow.command(name="clear", aliases=["c"])
 async def allow_clear(ctx):
     async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
         await db.execute("DELETE FROM allowed_user WHERE server_id = ?;", (ctx.guild.id,))
