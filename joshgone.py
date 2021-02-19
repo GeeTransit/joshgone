@@ -62,13 +62,13 @@ class Censor(commands.Cog):
             await db.execute("DELETE FROM server WHERE server_id = ?;", (guild.id,))
         await db.commit()
 
-    @commands.command(name="reinit")
+    @commands.command(name="reinit", ignore_extra=False)
     async def reinit_command(self, ctx):
         await self.on_guild_remove(ctx.guild)
         await self.on_guild_join(ctx.guild)
         await ctx.send("Reinitialized JoshGone.")
 
-    @commands.command(name="running", aliases=["r"])
+    @commands.command(name="running", aliases=["r"], ignore_extra=False)
     async def running_command(self, ctx, run: bool = None):
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             if run is None:
@@ -85,11 +85,11 @@ class Censor(commands.Cog):
                 await db.commit()
                 await ctx.send(f"JoshGone is now {'' if run else 'not '}running.")
 
-    @commands.group(name="emojis", aliases=["e"], pass_context=True, invoke_without_command=True)
+    @commands.group(name="emojis", aliases=["e"], ignore_extra=False, pass_context=True, invoke_without_command=True)
     async def emojis(self, ctx):
         await self.emojis_list(ctx)
 
-    @emojis.command(name="list", aliases=["l"])
+    @emojis.command(name="list", aliases=["l"], ignore_extra=False)
     async def emojis_list(self, ctx):
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             removed_emojis = []
@@ -133,18 +133,18 @@ class Censor(commands.Cog):
             await db.commit()
             await ctx.send(f"Removed {', '.join(map(str, emojis))} from removal list.")
 
-    @emojis.command(name="clear", aliases=["c"])
+    @emojis.command(name="clear", aliases=["c"], ignore_extra=False)
     async def emojis_clear(self, ctx):
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             await db.execute("DELETE FROM removed_emoji WHERE server_id = ?;", (ctx.guild.id,))
             await db.commit()
             await ctx.send("Cleared removal list.")
 
-    @commands.group(name="allow", aliases=["a"], pass_context=True, invoke_without_command=True)
+    @commands.group(name="allow", aliases=["a"], ignore_extra=False, pass_context=True, invoke_without_command=True)
     async def allow(self, ctx):
         await self.allow_list(ctx)
 
-    @allow.command(name="list", aliases=["l"])
+    @allow.command(name="list", aliases=["l"], ignore_extra=False)
     async def allow_list(self, ctx):
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             async with db.execute("SELECT user_id FROM allowed_user WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
@@ -167,7 +167,7 @@ class Censor(commands.Cog):
             await db.commit()
             await ctx.send(f"Removed {', '.join(user.name for user in users)} from allow list.")
 
-    @allow.command(name="clear", aliases=["c"])
+    @allow.command(name="clear", aliases=["c"], ignore_extra=False)
     async def allow_clear(self, ctx):
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             await db.execute("DELETE FROM allowed_user WHERE server_id = ?;", (ctx.guild.id,))
@@ -239,7 +239,7 @@ async def on_message_edit(before, after):
         await censor.process_message(after)
 
 BRUCECHANT = "okay guys so break is over stop playing games stop watching youtube stop doing cell phone stop watching anime"
-@bot.command(name="brucechant", aliases=["b", "bc", "🅱️", "🇧"])
+@bot.command(name="brucechant", aliases=["b", "bc", "🅱️", "🇧"], ignore_extra=False)
 async def brucechant_commant(ctx, repeats: int = 5):
     for _ in range(repeats):
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
