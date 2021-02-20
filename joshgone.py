@@ -239,7 +239,7 @@ async def on_message_edit(before, after):
         await censor.process_message(after)
 
 BRUCECHANT = "okay guys so break is over stop playing games stop watching youtube stop doing cell phone stop watching anime"
-@bot.command(name="brucechant", aliases=["b", "bc", "🅱️", "🇧"], ignore_extra=False)
+@bot.command(name="brucechant", aliases=["b", "bc", "🅱️", "\\🅱️", "🇧", "\\🇧"], ignore_extra=False)
 async def brucechant_commant(ctx, repeats: int = 5):
     for _ in range(repeats):
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
