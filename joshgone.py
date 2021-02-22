@@ -11,7 +11,7 @@ LOAD_ON_STARTUP = ["censor", "brucechant", "music"]
 
 intents = discord.Intents.default()
 intents.members = True
-bot = commands.Bot(command_prefix=("%joshgone ", "%"), intents=intents)
+bot = commands.Bot(command_prefix=commands.when_mentioned_or("%"), intents=intents)
 thread = None
 
 async def _init_repl():
