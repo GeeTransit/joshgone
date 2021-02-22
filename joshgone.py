@@ -75,6 +75,12 @@ class Admin(commands.Cog):
         self.bot.reload_extension(module)
         await ctx.send("Extension reloaded.")
 
+    @commands.command(name="list", hidden=True)
+    @commands.is_owner()
+    async def list_(self, ctx):
+        extensions = ", ".join(self.bot.extensions)
+        await ctx.send(f"Extensions loaded: [{extensions}]")
+
 bot.add_cog(Admin(bot))
 for module in LOAD_ON_STARTUP:
     bot.load_extension(module)
