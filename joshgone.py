@@ -6,6 +6,9 @@ import aiosqlite
 import discord
 from discord.ext import commands
 
+# These extensions are loaded automatically on startup
+LOAD_ON_STARTUP = ["censor", "brucechant"]
+
 intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix=("%joshgone ", "%"), intents=intents)
@@ -73,4 +76,8 @@ class Admin(commands.Cog):
         await ctx.send("Extension reloaded.")
 
 bot.add_cog(Admin(bot))
+for module in LOAD_ON_STARTUP:
+    bot.load_extension(module)
+    print(f"Loaded {module}")
+print(f"All extensions loaded: [{', '.join(LOAD_ON_STARTUP)}]")
 bot.run(os.environ["JOSHGONE_TOKEN"])
