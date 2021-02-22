@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 
 # These extensions are loaded automatically on startup
-LOAD_ON_STARTUP = ["censor", "brucechant", "music"]
+LOAD_ON_STARTUP = ["admin", "censor", "brucechant", "music"]
 
 intents = discord.Intents.default()
 intents.members = True
@@ -52,36 +52,6 @@ async def on_command_error(ctx, error):
         error = error.__cause__ or error
     await ctx.send(f"Oops, an error occurred: `{error!r}`")
 
-class Admin(commands.Cog):
-
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def load(self, ctx, *, module: str):
-        self.bot.load_extension(module)
-        await ctx.send("Extension loaded.")
-
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def unload(self, ctx, *, module: str):
-        self.bot.unload_extension(module)
-        await ctx.send("Extension unloaded.")
-
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def reload(self, ctx, *, module: str):
-        self.bot.reload_extension(module)
-        await ctx.send("Extension reloaded.")
-
-    @commands.command(name="list", hidden=True)
-    @commands.is_owner()
-    async def list_(self, ctx):
-        extensions = ", ".join(self.bot.extensions)
-        await ctx.send(f"Extensions loaded: [{extensions}]")
-
-bot.add_cog(Admin(bot))
 for module in LOAD_ON_STARTUP:
     bot.load_extension(module)
     print(f"Loaded {module}")
