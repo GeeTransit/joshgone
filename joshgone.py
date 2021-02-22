@@ -226,22 +226,6 @@ class Censor(commands.Cog):
             return
         await self.process_message(after)
 
-class BruceChant(commands.Cog):
-    BRUCECHANT = "okay guys so break is over stop playing games stop watching youtube stop doing cell phone stop watching anime"
-
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.command(aliases=["b", "bc", "🅱️", "\\🅱️", "🇧", "\\🇧"], ignore_extra=False)
-    async def brucechant(self, ctx, repeats: int = 5):
-        for _ in range(repeats):
-            async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
-                async with db.execute("SELECT running FROM server WHERE server_id = ? LIMIT 1;", (ctx.guild.id,)) as cursor:
-                    if not (row := await cursor.fetchone()) or not row[0]:
-                        break
-            await ctx.send(self.BRUCECHANT)
-            await asyncio.sleep(0.5)
-
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandInvokeError):
@@ -272,6 +256,5 @@ class Admin(commands.Cog):
         await ctx.send("Extension reloaded.")
 
 bot.add_cog(Censor(bot))
-bot.add_cog(BruceChant(bot))
 bot.add_cog(Admin(bot))
 bot.run(os.environ["JOSHGONE_TOKEN"])
