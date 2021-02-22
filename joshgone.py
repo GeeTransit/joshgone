@@ -361,5 +361,29 @@ async def solve(ctx, *, eq=""):
 async def solve_error(ctx, error):
     await ctx.send(str(error))  # Sends error as a message (for debugging)
 
+class Admin(commands.Cog):
+
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def load(self, ctx, *, module: str):
+        self.bot.load_extension(module)
+        await ctx.send("Extension loaded.")
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def unload(self, ctx, *, module: str):
+        self.bot.unload_extension(module)
+        await ctx.send("Extension unloaded.")
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def reload(self, ctx, *, module: str):
+        self.bot.reload_extension(module)
+        await ctx.send("Extension reloaded.")
+
 bot.add_cog(Censor(bot))
+bot.add_cog(Admin(bot))
 bot.run(os.environ["JOSHGONE_TOKEN"])
