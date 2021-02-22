@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 
 # These extensions are loaded automatically on startup
-LOAD_ON_STARTUP = ["censor", "brucechant"]
+LOAD_ON_STARTUP = ["censor", "brucechant", "music"]
 
 intents = discord.Intents.default()
 intents.members = True
