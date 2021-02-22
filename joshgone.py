@@ -1,13 +1,10 @@
 import asyncio
 import asyncio.__main__ as asyncio_main
 import os
-import re
-import typing
 
 import aiosqlite
 import discord
 from discord.ext import commands
-from discord.utils import get
 
 intents = discord.Intents.default()
 intents.members = True
