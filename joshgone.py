@@ -211,155 +211,151 @@ class Censor(commands.Cog):
             await author.send(f"Message deleted:\n```\n{message.content}\n```")
             await message.delete()
 
-ran = {}
-@bot.before_invoke
-async def before_invoke(ctx):
-    ran[ctx.message] = True
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.guild is None:
+            return
+        ctx = await self.bot.get_context(message)
+        if ctx.valid:
+            return
+        await self.process_message(message)
 
-@bot.event
-async def on_message(message):
-    if message.guild is None:
-        return
-    await bot.process_commands(message)
-    if ran.pop(message, False):
-        return
-    censor = bot.get_cog("Censor")
-    if censor is not None:
-        await censor.process_message(message)
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        if after.guild is None:
+            return
+        await self.process_message(after)
 
-@bot.event
-async def on_message_edit(before, after):
-    if after.guild is None:
-        return
-    # await bot.process_commands(message)
-    # if ran.pop(message, False):
-        # return
-    censor = bot.get_cog("Censor")
-    if censor is not None:
-        await censor.process_message(after)
+class BruceChant(commands.Cog):
+    BRUCECHANT = "okay guys so break is over stop playing games stop watching youtube stop doing cell phone stop watching anime"
 
-BRUCECHANT = "okay guys so break is over stop playing games stop watching youtube stop doing cell phone stop watching anime"
-@bot.command(name="brucechant", aliases=["b", "bc", "🅱️", "\\🅱️", "🇧", "\\🇧"], ignore_extra=False)
-async def brucechant_commant(ctx, repeats: int = 5):
-    for _ in range(repeats):
-        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
-            async with db.execute("SELECT running FROM server WHERE server_id = ? LIMIT 1;", (ctx.guild.id,)) as cursor:
-                if not (row := await cursor.fetchone()) or not row[0]:
-                    break
-        await ctx.send(BRUCECHANT)
-        await asyncio.sleep(0.5)
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command(aliases=["b", "bc", "🅱️", "\\🅱️", "🇧", "\\🇧"], ignore_extra=False)
+    async def brucechant(self, ctx, repeats: int = 5):
+        for _ in range(repeats):
+            async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+                async with db.execute("SELECT running FROM server WHERE server_id = ? LIMIT 1;", (ctx.guild.id,)) as cursor:
+                    if not (row := await cursor.fetchone()) or not row[0]:
+                        break
+            await ctx.send(self.BRUCECHANT)
+            await asyncio.sleep(0.5)
 
 @bot.event
 async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandInvokeError):
+        error = error.__cause__ or error
     await ctx.send(f"Oops, an error occurred: `{error!r}`")
 
 import math
-NUM = r"\d+(?:\.\d*)?"
-VAR = r"(?!\d)\w"
-SIGN = r"[+-]"
-EXPR = fr"(?:({SIGN}) |())(?:(?:({NUM}) |())({VAR})|({NUM})())"  # sign, num, var
 
-@bot.command(hidden=True)
-async def solve(ctx, *, eq=""):
-    infos = []  # Holds constant and coefficient of variable
-    name = None  # Name of the variable
+class Solver(commands.Cog):
+    NUM = r"\d+(?:\.\d*)?"
+    VAR = r"(?!\d)\w"
+    SIGN = r"[+-]"
+    EXPR = fr"(?:({SIGN}) |())(?:(?:({NUM}) |())({VAR})|({NUM})())"  # sign, num, var
 
-    # Loop through each expression and add them into `info`
-    for expr in eq.split("="):
-        info = [0, 0]  # [0] = coefficient, [1] = constant
-        match = None  # Last match (for the empty expression checker)
-        first = True  # Whether the term is the first term (can omit +/-)
-        last = 0  # End index of the last match
+    def __init__(self, bot):
+        self.bot = bot
 
-        # Loop over each term. Raise an error when the substring between
-        # matches contains something that's not a space.
-        for match in re.finditer(EXPR.replace(" ", r"\s*"), expr):
-            # Connecting substring must be whitespace only
-            if expr[last:match.start()] and not expr[last:match.start()].isspace():
-                raise ValueError(f"couldn't parse: {expr[last:match.start()]}")
+    @commands.command(hidden=True)
+    async def solve(self, ctx, *, eq=""):
+        infos = []  # Holds constant and coefficient of variable
+        name = None  # Name of the variable
 
-            # Get the match's groups
-            sign, num, var = filter(lambda i: i is not None, match.groups())
-            # Only the first term can omit the +/-
-            if not sign and not first:
-                raise ValueError(f"missing sign for {num}{var}")
-            # Default to 1 (such as when a variable is passed: 7+a)
-            if not num:
-                num = "1"
+        # Loop through each expression and add them into `info`
+        for expr in eq.split("="):
+            info = [0, 0]  # [0] = coefficient, [1] = constant
+            match = None  # Last match (for the empty expression checker)
+            first = True  # Whether the term is the first term (can omit +/-)
+            last = 0  # End index of the last match
 
-            # Turn the value into a Python int / float
-            value = float(num) if "." in num else int(num)
-            if sign == "-":
-                value *= -1
+            # Loop over each term. Raise an error when the substring between
+            # matches contains something that's not a space.
+            for match in re.finditer(self.EXPR.replace(" ", r"\s*"), expr):
+                # Connecting substring must be whitespace only
+                if expr[last:match.start()] and not expr[last:match.start()].isspace():
+                    raise ValueError(f"couldn't parse: {expr[last:match.start()]}")
 
-            # Update expression info
-            if var:
-                # Only allow one variable is allowed for now
-                if name is not None:
-                    if name != var:
-                        raise ValueError(f"more than one variable found: {name}, {var}")
+                # Get the match's groups
+                sign, num, var = filter(lambda i: i is not None, match.groups())
+                # Only the first term can omit the +/-
+                if not sign and not first:
+                    raise ValueError(f"missing sign for {num}{var}")
+                # Default to 1 (such as when a variable is passed: 7+a)
+                if not num:
+                    num = "1"
+
+                # Turn the value into a Python int / float
+                value = float(num) if "." in num else int(num)
+                if sign == "-":
+                    value *= -1
+
+                # Update expression info
+                if var:
+                    # Only allow one variable is allowed for now
+                    if name is not None:
+                        if name != var:
+                            raise ValueError(f"more than one variable found: {name}, {var}")
+                    else:
+                        name = var
+                    info[0] += value  # Add to coefficient
                 else:
-                    name = var
-                info[0] += value  # Add to coefficient
+                    info[1] += value  # Add to constant
+
+                # Update first and last variables
+                if first:
+                    first = False
+                last = match.end()
+
+            # Trailing substring must be whitespace only
+            if expr[last:] and not expr[last:].isspace():
+                raise ValueError(f"couldn't parse: {expr[last:]}")
+            # The expression cannot be empty (at least one term needed)
+            if match is None:
+                raise ValueError(f"empty expression: {expr}")
+            infos.append(info)  # Add to infos list
+
+        if len(infos) == 1:
+            # Single expression (no equals sign)
+            var, const = infos[0]
+            if var != 0:
+                # Solve for the variable
+                value = const / var
+                if int(value) == value:
+                    value = int(value)
+                await ctx.send(f"{name} = {value}")
             else:
-                info[1] += value  # Add to constant
+                # Return the expression result
+                await ctx.send(f"{const}")
+            return
 
-            # Update first and last variables
-            if first:
-                first = False
-            last = match.end()
-
-        # Trailing substring must be whitespace only
-        if expr[last:] and not expr[last:].isspace():
-            raise ValueError(f"couldn't parse: {expr[last:]}")
-        # The expression cannot be empty (at least one term needed)
-        if match is None:
-            raise ValueError(f"empty expression: {expr}")
-        infos.append(info)  # Add to infos list
-
-    if len(infos) == 1:
-        # Single expression (no equals sign)
-        var, const = infos[0]
-        if var != 0:
-            # Solve for the variable
-            value = const / var
-            if int(value) == value:
-                value = int(value)
-            await ctx.send(f"{name} = {value}")
-        else:
-            # Return the expression result
-            await ctx.send(f"{const}")
-        return
-
-    # Multiple expressions
-    first_var, first_const = infos[0]
-    check = None
-    for info in infos[1:]:
-        var, const = info
-        if not math.isclose(first_var, var):
-            # Solve for the variable
-            value = (const - first_const) / (first_var - var)
-            # Check that the solved value equals previous values
-            if check is not None:
-                if not math.isclose(check, value):
-                    raise ValueError(f"more than one possible value: {check}, {value}")
+        # Multiple expressions
+        first_var, first_const = infos[0]
+        check = None
+        for info in infos[1:]:
+            var, const = info
+            if not math.isclose(first_var, var):
+                # Solve for the variable
+                value = (const - first_const) / (first_var - var)
+                # Check that the solved value equals previous values
+                if check is not None:
+                    if not math.isclose(check, value):
+                        raise ValueError(f"more than one possible value: {check}, {value}")
+                else:
+                    check = value
             else:
-                check = value
+                # Check that the constants equal eachother
+                if not math.isclose(const, first_const):
+                    raise ValueError(f"more than one value: {first_const}, {const}")
+        # Return solved value (variable or constant)
+        if check is not None:
+            if int(check) == check:
+                check = int(check)
+            await ctx.send(f"{name} = {check}")
         else:
-            # Check that the constants equal eachother
-            if not math.isclose(const, first_const):
-                raise ValueError(f"more than one value: {first_const}, {const}")
-    # Return solved value (variable or constant)
-    if check is not None:
-        if int(check) == check:
-            check = int(check)
-        await ctx.send(f"{name} = {check}")
-    else:
-        await ctx.send(f"{first_const}")
-
-@solve.error
-async def solve_error(ctx, error):
-    await ctx.send(str(error))  # Sends error as a message (for debugging)
+            await ctx.send(f"{first_const}")
 
 class Admin(commands.Cog):
 
@@ -385,5 +381,7 @@ class Admin(commands.Cog):
         await ctx.send("Extension reloaded.")
 
 bot.add_cog(Censor(bot))
+bot.add_cog(BruceChant(bot))
+bot.add_cog(Solver(bot))
 bot.add_cog(Admin(bot))
 bot.run(os.environ["JOSHGONE_TOKEN"])
