@@ -29,5 +29,11 @@ class Admin(commands.Cog):
         extensions = ", ".join(self.bot.extensions)
         await ctx.send(f"Extensions loaded: [{extensions}]")
 
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def shutdown(self, ctx):
+        await ctx.send("Shutting bot shut down.")
+        await self.bot.close()
+
 def setup(bot):
     bot.add_cog(Admin(bot))
