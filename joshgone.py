@@ -251,8 +251,7 @@ async def brucechant_commant(ctx, repeats: int = 5):
 
 @bot.event
 async def on_command_error(ctx, error):
-    gee = get(bot.users, name="GeeTransit")
-    await gee.send(f"Error:\n```{error!r}```")
+    await ctx.send(f"Oops, an error occurred: `{error!r}`")
 
 import math
 NUM = r"\d+(?:\.\d*)?"
