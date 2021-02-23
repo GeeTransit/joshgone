@@ -24,6 +24,10 @@ class Solver(commands.Cog):
             first = True  # Whether the term is the first term (can omit +/-)
             last = 0  # End index of the last match
 
+            if re.match(r"^\s*9\s*\+\s*10\s*$", expr):
+                infos.append([0, 21])
+                continue
+
             # Loop over each term. Raise an error when the substring between
             # matches contains something that's not a space.
             for match in re.finditer(self.EXPR.replace(" ", r"\s*"), expr):
