@@ -13,6 +13,7 @@ intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix=commands.when_mentioned_or("%"), intents=intents)
 thread = None
+started = False
 
 async def _init_repl():
     global thread
@@ -42,8 +43,16 @@ async def process(message):
 
 @bot.event
 async def on_ready():
+    global started
     print(f"JoshGone logged on as {bot.user}.")
     print(f"SQLite version is {aiosqlite.sqlite_version}.")
+    if started:
+        return
+    started = True
+    for module in LOAD_ON_STARTUP:
+        bot.load_extension(module)
+        print(f"Loaded {module}")
+    print(f"All extensions loaded: [{', '.join(LOAD_ON_STARTUP)}]")
     await _init_repl()
 
 @bot.event
@@ -52,8 +61,4 @@ async def on_command_error(ctx, error):
         error = error.__cause__ or error
     await ctx.send(f"Oops, an error occurred: `{error!r}`")
 
-for module in LOAD_ON_STARTUP:
-    bot.load_extension(module)
-    print(f"Loaded {module}")
-print(f"All extensions loaded: [{', '.join(LOAD_ON_STARTUP)}]")
 bot.run(os.environ["JOSHGONE_TOKEN"])
