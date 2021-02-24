@@ -1,6 +1,7 @@
 # Source: https://github.com/Rapptz/discord.py/blob/master/examples/basic_voice.py
 
 import asyncio
+from collections import deque
 
 import discord
 from discord.ext import commands
@@ -13,6 +14,7 @@ class Music(commands.Cog):
         'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
         'restrictfilenames': True,
         'noplaylist': True,
+        'playlistend': 1,
         'nocheckcertificate': True,
         'ignoreerrors': False,
         'logtostderr': False,
@@ -31,10 +33,65 @@ class Music(commands.Cog):
         self.bot = bot
         self.ytdl_opts = ytdl_opts
         self.ffmpeg_opts = ffmpeg_opts
+        if not hasattr(bot, "_music_info"):
+            bot._music_info = {}
+        if not hasattr(bot, "_music_advance_queue"):
+            bot._music_advance_queue = asyncio.Queue()
+        self.infos = bot._music_info
+        self.advance_queue = bot._music_advance_queue
+        self.advance_task = asyncio.create_task(self.handle_advances(), name="music_advancer")
+
+    def cog_unload(self):
+        self.advance_task.cancel()
+
+    async def _play_local(self, query):
+        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
+        return source, query
+
+    async def _play_stream(self, url):
+        player, data = await self.player_from_url(url, stream=True)
+        return player, data.get("title", url)
+
+    async def handle_advances(self):
+        while True:
+            ctx, error = await self.advance_queue.get()
+            info = self.get_info(ctx)
+            info["current"] = None
+            if error is not None:
+                await ctx.send(f"Player error: {error!r}")
+            queue = info["queue"]
+            if queue:
+                ty, query = info["current"] = queue.popleft()
+                after = lambda error, ctx=ctx: self.schedule(ctx, error)
+                try:
+                    async with ctx.typing():
+                        source, title = await getattr(self, f"_play_{ty}")(query)
+                        ctx.voice_client.play(source, after=after)
+                    await ctx.send(f"Now playing: {title}")
+                except Exception as e:
+                    await ctx.send(f"Internal Error: {e!r}")
+                    await self.skip(ctx)
+
+    def schedule(self, ctx, error=None):
+        self.advance_queue.put_nowait((ctx, error))
+
+    def get_info(self, ctx):
+        guild_id = ctx.guild.id
+        if guild_id not in self.infos:
+             self.infos[guild_id] = {}
+        info = self.infos[guild_id]
+        if "queue" not in info:
+            info["queue"] = deque()
+        if "current" not in info:
+            info["current"] = None
+        return info
+
+    def pop_info(self, ctx):
+        return self.infos.pop(ctx.guild.id, None)
 
     async def player_from_url(self, url, *, loop=None, stream=False):
         ytdl = youtube_dl.YoutubeDL(self.ytdl_opts)
-        loop = loop or asyncio.get_event_loop()
+        loop = loop or asyncio.get_running_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
         if 'entries' in data:
             # take first item from a playlist
@@ -53,28 +110,24 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def play(self, ctx, *, query):
+    async def local(self, ctx, *, query):
         """Plays a file from the local filesystem"""
-        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
-        ctx.voice_client.play(source, after=lambda e: e and print(f'Player error: {e}'))
-        await ctx.send(f"Now playing: {query}")
+        info = self.get_info(ctx)
+        queue = info["queue"]
+        queue.append(("local", query))
+        if info["current"] is None:
+            self.schedule(ctx)
+        await ctx.send(f"Added to queue: local {query}")
 
-    @commands.command()
-    @commands.is_owner()
-    async def yt(self, ctx, *, url):
-        """Plays from a url (almost anything youtube_dl supports)"""
-        async with ctx.typing():
-            player, data = await self.player_from_url(url)
-            ctx.voice_client.play(player, after=lambda e: e and print(f'Player error: {e}'))
-        await ctx.send(f"Now playing: {data.get('title')}")
-
-    @commands.command()
+    @commands.command(aliases=["yt", "play"])
     async def stream(self, ctx, *, url):
-        """Streams from a url (same as yt, but doesn't predownload)"""
-        async with ctx.typing():
-            player, data = await self.player_from_url(url, stream=True)
-            ctx.voice_client.play(player, after=lambda e: e and print(f'Player error: {e}'))
-        await ctx.send(f"Now playing: {data.get('title')}")
+        """Plays from a url (almost anything youtube_dl supports)"""
+        info = self.get_info(ctx)
+        queue = info["queue"]
+        queue.append(("stream", url))
+        if info["current"] is None:
+            self.schedule(ctx)
+        await ctx.send(f"Added to queue: stream {url}")
 
     @commands.command()
     async def volume(self, ctx, volume: float = None):
@@ -95,52 +148,120 @@ class Music(commands.Cog):
         ctx.voice_client.source.volume = volume / 100
         await ctx.send(f"Changed volume to {volume}%")
 
-    @commands.command()
+    @commands.command(aliases=["stop"])
     async def pause(self, ctx):
         """Pauses playing"""
         ctx.voice_client.pause()
 
-    @commands.command()
+    @commands.command(aliases=["start"])
     async def resume(self, ctx):
         """Resumes playing"""
         ctx.voice_client.resume()
 
     @commands.command()
-    async def stop(self, ctx):
-        """Stops playing"""
-        ctx.voice_client.stop()
-
-    @commands.command()
     async def leave(self, ctx):
-        """Stops and disconnects the bot from voice"""
+        """Disconnects the bot from voice and clears the queue"""
+        self.pop_info(ctx)
         if ctx.voice_client is None:
             return
         await ctx.voice_client.disconnect()
 
-    @play.before_invoke
-    @yt.before_invoke
+    @commands.command()
+    async def current(self, ctx):
+        """Shows the current song"""
+        query = None
+        if ctx.voice_client is not None:
+            info = self.get_info(ctx)
+            current = info["current"]
+            if current is not None:
+                ty, query = current
+        await ctx.send(f"Current: {query}")
+
+    @commands.command()
+    async def queue(self, ctx):
+        """Shows the songs on queue"""
+        queue = ()
+        length = 0
+        if ctx.voice_client is not None:
+            info = self.get_info(ctx)
+            queue = info["queue"]
+            length = len(queue)
+        queries = [query for ty, query in queue]
+        if not queries:
+            queries = (None,)
+        string = "\n".join(map(str, queries))
+        await ctx.send(f"Queue [{length}]:\n```\n{string}\n```")
+
+    @commands.command()
+    async def remove(self, ctx, position: int):
+        """Removes a song on queue"""
+        index = position
+        if index > 0:
+            index -= 1
+        info = self.get_info(ctx)
+        queue = info["queue"]
+        if index < 0:
+            index += len(queue)
+        if not 0 <= index < len(queue):
+            raise commands.CommandError(f"Index out of range [{position}].")
+            return
+        queue.rotate(-index)
+        ty, query = queue.popleft()
+        queue.rotate(index)
+        await ctx.send(f"Removed song [{position}]: {query}")
+
+    @commands.command()
+    async def clear(self, ctx):
+        """Clears all songs on queue"""
+        info = self.get_info(ctx)
+        queue = info["queue"]
+        queue.clear()
+        await ctx.send("Cleared queue.")
+
+    @commands.command()
+    async def skip(self, ctx):
+        """Skips current song"""
+        info = self.get_info(ctx)
+        ctx.voice_client.stop()
+        current = info["current"]
+        if ctx.voice_client.source is None or current is None:
+            self.schedule(ctx)
+        if current is not None:
+            ty, query = current
+            await ctx.send(f"Skipped: {query}")
+
+    @commands.command()
+    @commands.is_owner()
+    async def reschedule(self, ctx):
+        """Reschedules the current guild onto the advancer task"""
+        self.schedule(ctx)
+        await ctx.send("Rescheduled.")
+
+    @local.before_invoke
     @stream.before_invoke
-    async def ensure_stopped(self, ctx):
+    async def ensure_connected(self, ctx):
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
             else:
                 await ctx.send("You are not connected to a voice channel.")
                 raise commands.CommandError("Author not connected to a voice channel.")
-        elif ctx.voice_client.is_playing():
-            ctx.voice_client.stop()
 
     @pause.before_invoke
     @resume.before_invoke
-    async def check_source(self, ctx):
+    async def check_playing(self, ctx):
         await self.check_connected(ctx)
         if ctx.voice_client.source is None:
             raise commands.CommandError("Not playing anything right now.")
 
-    @stop.before_invoke
+    @remove.before_invoke
+    @reschedule.before_invoke
+    @skip.before_invoke
+    @clear.before_invoke
+    @volume.before_invoke
     async def check_connected(self, ctx):
         if ctx.voice_client is None:
-            raise commands.CommandError("Author not connected to a voice channel.")
+            raise commands.CommandError("Not connected to a voice channel.")
 
 def setup(bot):
     bot.add_cog(Music(bot))
