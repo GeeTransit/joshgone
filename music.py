@@ -2,6 +2,7 @@
 
 import asyncio
 import dataclasses
+import typing
 from collections import deque
 
 import discord
@@ -13,6 +14,12 @@ import youtube_dl
 class Song:
     ty: str
     query: str
+
+@dataclasses.dataclass
+class Info:
+    queue: deque[Song] = dataclasses.field(default_factory=deque)
+    current: typing.Optional[Song] = None
+    waiting: bool = False
 
 class Music(commands.Cog):
     _DEFAULT_YTDL_OPTS = {
@@ -62,16 +69,16 @@ class Music(commands.Cog):
         while True:
             ctx, error = await self.advance_queue.get()
             info = self.get_info(ctx)
-            info["current"] = None
+            info.current = None
             if error is not None:
                 await ctx.send(f"Player error: {error!r}")
-            queue = info["queue"]
+            queue = info.queue
             if queue:
                 current = queue.popleft()
                 if isinstance(current, tuple):
                     ty, query = current
                     current = Song(ty, query)
-                info["current"] = current
+                info.current = current
                 after = lambda error, ctx=ctx: self.schedule(ctx, error)
                 try:
                     async with ctx.typing():
@@ -80,30 +87,31 @@ class Music(commands.Cog):
                     await ctx.send(f"Now playing: {title}")
                 except Exception as e:
                     await ctx.send(f"Internal Error: {e!r}")
-                    info["waiting"] = False
+                    info.waiting = False
                     await self.skip(ctx)
                     self.schedule(ctx)
             else:
                 await ctx.send(f"Queue empty.")
-            info["waiting"] = False
+            info.waiting = False
 
     def schedule(self, ctx, error=None, *, force=False):
         info = self.get_info(ctx)
-        if force or not info["waiting"]:
+        if force or not info.waiting:
             self.advance_queue.put_nowait((ctx, error))
-            info["waiting"] = True
+            info.waiting = True
 
     def get_info(self, ctx):
         guild_id = ctx.guild.id
         if guild_id not in self.infos:
-             self.infos[guild_id] = {}
+             self.infos[guild_id] = Info()
         info = self.infos[guild_id]
-        if "queue" not in info:
-            info["queue"] = deque()
-        if "current" not in info:
-            info["current"] = None
-        if "waiting" not in info:
-            info["waiting"] = False
+        if isinstance(info, dict):
+            info = Info(**info)
+        required = {field.name for field in dataclasses.fields(Info)}
+        has = {field.name for field in dataclasses.fields(info)}
+        if has != required:
+            info = Info(**dataclasses.asdict(info))
+        self.infos[guild_id] = info
         return info
 
     def pop_info(self, ctx):
@@ -133,9 +141,9 @@ class Music(commands.Cog):
     async def local(self, ctx, *, query):
         """Plays a file from the local filesystem"""
         info = self.get_info(ctx)
-        queue = info["queue"]
+        queue = info.queue
         queue.append(Song("local", query))
-        if info["current"] is None:
+        if info.current is None:
             self.schedule(ctx)
         await ctx.send(f"Added to queue: local {query}")
 
@@ -143,9 +151,9 @@ class Music(commands.Cog):
     async def stream(self, ctx, *, url):
         """Plays from a url (almost anything youtube_dl supports)"""
         info = self.get_info(ctx)
-        queue = info["queue"]
+        queue = info.queue
         queue.append(Song("stream", url))
-        if info["current"] is None:
+        if info.current is None:
             self.schedule(ctx)
         await ctx.send(f"Added to queue: stream {url}")
 
@@ -192,8 +200,8 @@ class Music(commands.Cog):
         query = None
         if ctx.voice_client is not None:
             info = self.get_info(ctx)
-            current = info["current"]
-            if current is not None and not info["waiting"]:
+            current = info.current
+            if current is not None and not info.waiting:
                 query = current.query
         await ctx.send(f"Current: {query}")
 
@@ -204,7 +212,7 @@ class Music(commands.Cog):
         length = 0
         if ctx.voice_client is not None:
             info = self.get_info(ctx)
-            queue = info["queue"]
+            queue = info.queue
             length = len(queue)
         queries = [song.query for song in queue]
         if not queries:
@@ -219,7 +227,7 @@ class Music(commands.Cog):
         if index > 0:
             index -= 1
         info = self.get_info(ctx)
-        queue = info["queue"]
+        queue = info.queue
         if index < 0:
             index += len(queue)
         if not 0 <= index < len(queue):
@@ -234,7 +242,7 @@ class Music(commands.Cog):
     async def clear(self, ctx):
         """Clears all songs on queue"""
         info = self.get_info(ctx)
-        queue = info["queue"]
+        queue = info.queue
         queue.clear()
         await ctx.send("Cleared queue.")
 
@@ -242,9 +250,9 @@ class Music(commands.Cog):
     async def skip(self, ctx):
         """Skips current song"""
         info = self.get_info(ctx)
-        current = info["current"]
+        current = info.current
         ctx.voice_client.stop()
-        if current is not None and not info["waiting"]:
+        if current is not None and not info.waiting:
             await ctx.send(f"Skipped: {current.query}")
 
     @commands.command()
