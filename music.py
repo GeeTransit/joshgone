@@ -70,10 +70,18 @@ class Music(commands.Cog):
                     await ctx.send(f"Now playing: {title}")
                 except Exception as e:
                     await ctx.send(f"Internal Error: {e!r}")
+                    info["waiting"] = False
                     await self.skip(ctx)
+                    self.schedule(ctx)
+            else:
+                await ctx.send(f"Queue empty.")
+            info["waiting"] = False
 
-    def schedule(self, ctx, error=None):
-        self.advance_queue.put_nowait((ctx, error))
+    def schedule(self, ctx, error=None, *, force=False):
+        info = self.get_info(ctx)
+        if force or not info["waiting"]:
+            self.advance_queue.put_nowait((ctx, error))
+            info["waiting"] = True
 
     def get_info(self, ctx):
         guild_id = ctx.guild.id
@@ -84,6 +92,8 @@ class Music(commands.Cog):
             info["queue"] = deque()
         if "current" not in info:
             info["current"] = None
+        if "waiting" not in info:
+            info["waiting"] = False
         return info
 
     def pop_info(self, ctx):
@@ -173,7 +183,7 @@ class Music(commands.Cog):
         if ctx.voice_client is not None:
             info = self.get_info(ctx)
             current = info["current"]
-            if current is not None:
+            if current is not None and not info["waiting"]:
                 ty, query = current
         await ctx.send(f"Current: {query}")
 
@@ -222,11 +232,9 @@ class Music(commands.Cog):
     async def skip(self, ctx):
         """Skips current song"""
         info = self.get_info(ctx)
-        ctx.voice_client.stop()
         current = info["current"]
-        if ctx.voice_client.source is None or current is None:
-            self.schedule(ctx)
-        if current is not None:
+        ctx.voice_client.stop()
+        if current is not None and not info["waiting"]:
             ty, query = current
             await ctx.send(f"Skipped: {query}")
 
@@ -234,7 +242,7 @@ class Music(commands.Cog):
     @commands.is_owner()
     async def reschedule(self, ctx):
         """Reschedules the current guild onto the advancer task"""
-        self.schedule(ctx)
+        self.schedule(ctx, force=True)
         await ctx.send("Rescheduled.")
 
     @local.before_invoke
