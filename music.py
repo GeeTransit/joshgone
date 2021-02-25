@@ -91,7 +91,7 @@ class Music(commands.Cog):
                     await self.skip(ctx)
                     self.schedule(ctx)
             else:
-                await ctx.send(f"Queue empty.")
+                await ctx.send(f"Queue empty")
             info.waiting = False
 
     def schedule(self, ctx, error=None, *, force=False):
@@ -167,7 +167,7 @@ class Music(commands.Cog):
             await ctx.send(f"Volume set to {volume}%")
             return
         if ctx.voice_client is None:
-            return await ctx.send("Not connected to a voice channel.")
+            return await ctx.send("Not connected to a voice channel")
         if int(volume) == volume:
             volume = int(volume)
         if not await self.bot.is_owner(ctx.author):
@@ -231,7 +231,7 @@ class Music(commands.Cog):
         if index < 0:
             index += len(queue)
         if not 0 <= index < len(queue):
-            raise commands.CommandError(f"Index out of range [{position}].")
+            raise commands.CommandError(f"Index out of range [{position}]")
             return
         queue.rotate(-index)
         song = queue.popleft()
@@ -244,7 +244,7 @@ class Music(commands.Cog):
         info = self.get_info(ctx)
         queue = info.queue
         queue.clear()
-        await ctx.send("Cleared queue.")
+        await ctx.send("Cleared queue")
 
     @commands.command()
     async def skip(self, ctx):
@@ -260,7 +260,7 @@ class Music(commands.Cog):
     async def reschedule(self, ctx):
         """Reschedules the current guild onto the advancer task"""
         self.schedule(ctx, force=True)
-        await ctx.send("Rescheduled.")
+        await ctx.send("Rescheduled")
 
     @local.before_invoke
     @stream.before_invoke
@@ -269,15 +269,15 @@ class Music(commands.Cog):
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
             else:
-                await ctx.send("You are not connected to a voice channel.")
-                raise commands.CommandError("Author not connected to a voice channel.")
+                await ctx.send("You are not connected to a voice channel")
+                raise commands.CommandError("Author not connected to a voice channel")
 
     @pause.before_invoke
     @resume.before_invoke
     async def check_playing(self, ctx):
         await self.check_connected(ctx)
         if ctx.voice_client.source is None:
-            raise commands.CommandError("Not playing anything right now.")
+            raise commands.CommandError("Not playing anything right now")
 
     @remove.before_invoke
     @reschedule.before_invoke
@@ -286,7 +286,7 @@ class Music(commands.Cog):
     @volume.before_invoke
     async def check_connected(self, ctx):
         if ctx.voice_client is None:
-            raise commands.CommandError("Not connected to a voice channel.")
+            raise commands.CommandError("Not connected to a voice channel")
 
 def setup(bot):
     bot.add_cog(Music(bot))
