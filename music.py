@@ -1,12 +1,18 @@
 # Source: https://github.com/Rapptz/discord.py/blob/master/examples/basic_voice.py
 
 import asyncio
+import dataclasses
 from collections import deque
 
 import discord
 from discord.ext import commands
 
 import youtube_dl
+
+@dataclasses.dataclass
+class Song:
+    ty: str
+    query: str
 
 class Music(commands.Cog):
     _DEFAULT_YTDL_OPTS = {
@@ -61,11 +67,15 @@ class Music(commands.Cog):
                 await ctx.send(f"Player error: {error!r}")
             queue = info["queue"]
             if queue:
-                ty, query = info["current"] = queue.popleft()
+                current = queue.popleft()
+                if isinstance(current, tuple):
+                    ty, query = current
+                    current = Song(ty, query)
+                info["current"] = current
                 after = lambda error, ctx=ctx: self.schedule(ctx, error)
                 try:
                     async with ctx.typing():
-                        source, title = await getattr(self, f"_play_{ty}")(query)
+                        source, title = await getattr(self, f"_play_{current.ty}")(current.query)
                         ctx.voice_client.play(source, after=after)
                     await ctx.send(f"Now playing: {title}")
                 except Exception as e:
@@ -124,7 +134,7 @@ class Music(commands.Cog):
         """Plays a file from the local filesystem"""
         info = self.get_info(ctx)
         queue = info["queue"]
-        queue.append(("local", query))
+        queue.append(Song("local", query))
         if info["current"] is None:
             self.schedule(ctx)
         await ctx.send(f"Added to queue: local {query}")
@@ -134,7 +144,7 @@ class Music(commands.Cog):
         """Plays from a url (almost anything youtube_dl supports)"""
         info = self.get_info(ctx)
         queue = info["queue"]
-        queue.append(("stream", url))
+        queue.append(Song("stream", url))
         if info["current"] is None:
             self.schedule(ctx)
         await ctx.send(f"Added to queue: stream {url}")
@@ -184,7 +194,7 @@ class Music(commands.Cog):
             info = self.get_info(ctx)
             current = info["current"]
             if current is not None and not info["waiting"]:
-                ty, query = current
+                query = current.query
         await ctx.send(f"Current: {query}")
 
     @commands.command()
@@ -196,7 +206,7 @@ class Music(commands.Cog):
             info = self.get_info(ctx)
             queue = info["queue"]
             length = len(queue)
-        queries = [query for ty, query in queue]
+        queries = [song.query for song in queue]
         if not queries:
             queries = (None,)
         string = "\n".join(map(str, queries))
@@ -216,9 +226,9 @@ class Music(commands.Cog):
             raise commands.CommandError(f"Index out of range [{position}].")
             return
         queue.rotate(-index)
-        ty, query = queue.popleft()
+        song = queue.popleft()
         queue.rotate(index)
-        await ctx.send(f"Removed song [{position}]: {query}")
+        await ctx.send(f"Removed song [{position}]: {song.query}")
 
     @commands.command()
     async def clear(self, ctx):
@@ -235,8 +245,7 @@ class Music(commands.Cog):
         current = info["current"]
         ctx.voice_client.stop()
         if current is not None and not info["waiting"]:
-            ty, query = current
-            await ctx.send(f"Skipped: {query}")
+            await ctx.send(f"Skipped: {current.query}")
 
     @commands.command()
     @commands.is_owner()
