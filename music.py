@@ -40,6 +40,9 @@ class InfoWrapper:
         else:
             del self.data[name][self.id]
 
+    def to_dict(self):
+        return {name: getattr(self, name) for name in self.NAMES}
+
     def defined(self, name):
         return self.id in self.data[name]
 
