@@ -19,7 +19,7 @@ class Song:
 class InfoWrapper:
     id: int
     data: dict = dataclasses.field(repr=False)
-    LATEST_VERSION: typing.ClassVar[int] = 1
+    LATEST_VERSION: typing.ClassVar[int] = 2
     NAMES: typing.ClassVar[int] = "queue current waiting version".split()
 
     def __getattr__(self, name):
@@ -60,6 +60,11 @@ class InfoWrapper:
         if not self.defined("waiting"):
             self.waiting = False
         self.version = 1
+
+    def _update1(self):
+        if not self.defined("loop"):
+            self.loop = False
+        self.version = 2
 
 class Music(commands.Cog):
     _DEFAULT_YTDL_OPTS = {
@@ -115,10 +120,12 @@ class Music(commands.Cog):
         while True:
             ctx, error = await self.advance_queue.get()
             info = self.get_info(ctx)
-            info.current = None
             if error is not None:
                 await ctx.send(f"Player error: {error!r}")
             queue = info.queue
+            if info.loop and info.current is not None:
+                queue.append(info.current)
+            info.current = None
             if queue:
                 current = queue.popleft()
                 if isinstance(current, tuple):
@@ -256,15 +263,17 @@ class Music(commands.Cog):
         """Shows the songs on queue"""
         queue = ()
         length = 0
+        looping = False
         if ctx.voice_client is not None:
             info = self.get_info(ctx)
             queue = info.queue
             length = len(queue)
+            looping = info.loop
         queries = [song.query for song in queue]
         if not queries:
             queries = (None,)
         string = "\n".join(map(str, queries))
-        await ctx.send(f"Queue [{length}]:\n```\n{string}\n```")
+        await ctx.send(f"Queue [{length}]{' (looping)'*looping}:\n```\n{string}\n```")
 
     @commands.command()
     async def remove(self, ctx, position: int):
@@ -300,6 +309,16 @@ class Music(commands.Cog):
         ctx.voice_client.stop()
         if current is not None and not info.waiting:
             await ctx.send(f"Skipped: {current.query}")
+
+    @commands.command()
+    async def loop(self, ctx, loop: typing.Optional[bool] = None):
+        """Gets or sets queue looping"""
+        info = self.get_info(ctx)
+        if loop is None:
+            await ctx.send(f"Queue {'is' if info.loop else 'is not'} looping")
+            return
+        info.loop = loop
+        await ctx.send(f"Queue {'is now' if info.loop else 'is now not'} looping")
 
     @commands.command()
     @commands.is_owner()
