@@ -16,10 +16,47 @@ class Song:
     query: str
 
 @dataclasses.dataclass
-class Info:
-    queue: deque[Song] = dataclasses.field(default_factory=deque)
-    current: typing.Optional[Song] = None
-    waiting: bool = False
+class InfoWrapper:
+    id: int
+    data: dict = dataclasses.field(repr=False)
+    LATEST_VERSION: typing.ClassVar[int] = 1
+    NAMES: typing.ClassVar[int] = "queue current waiting version".split()
+
+    def __getattr__(self, name):
+        try:
+            return self.data[name][self.id]
+        except KeyError:
+            raise AttributeError(name)
+
+    def __setattr__(self, name, value):
+        if name in ("id", "data"):
+            super().__setattr__(name, value)
+        else:
+            self.data[name][self.id] = value
+
+    def __delattr__(self, name):
+        if name in ("id", "data"):
+            super().__delattr__(name)
+        else:
+            del self.data[name][self.id]
+
+    def defined(self, name):
+        return self.id in self.data[name]
+
+    def fill(self):
+        if not self.defined("version"):
+            self.version = 0
+        while self.version != self.LATEST_VERSION:
+            getattr(self, f"_update{self.version}")()
+
+    def _update0(self):
+        if not self.defined("queue"):
+            self.queue = deque()
+        if not self.defined("current"):
+            self.current = None
+        if not self.defined("waiting"):
+            self.waiting = False
+        self.version = 1
 
 class Music(commands.Cog):
     _DEFAULT_YTDL_OPTS = {
@@ -48,11 +85,17 @@ class Music(commands.Cog):
         self.ffmpeg_opts = ffmpeg_opts
         if not hasattr(bot, "_music_info"):
             bot._music_info = {}
+        if not hasattr(bot, "_music_data"):
+            bot._music_data = {}
         if not hasattr(bot, "_music_advance_queue"):
             bot._music_advance_queue = asyncio.Queue()
         self.infos = bot._music_info
+        self.data = bot._music_data
         self.advance_queue = bot._music_advance_queue
         self.advance_task = asyncio.create_task(self.handle_advances(), name="music_advancer")
+        for name in InfoWrapper.NAMES:
+            if name not in self.data:
+                self.data[name] = {}
 
     def cog_unload(self):
         self.advance_task.cancel()
@@ -102,20 +145,20 @@ class Music(commands.Cog):
 
     def get_info(self, ctx):
         guild_id = ctx.guild.id
-        if guild_id not in self.infos:
-             self.infos[guild_id] = Info()
-        info = self.infos[guild_id]
-        if isinstance(info, dict):
-            info = Info(**info)
-        required = {field.name for field in dataclasses.fields(Info)}
-        has = {field.name for field in dataclasses.fields(info)}
-        if has != required:
-            info = Info(**dataclasses.asdict(info))
-        self.infos[guild_id] = info
-        return info
+        wrapped = InfoWrapper(guild_id, self.data)
+        if guild_id in self.infos:
+            info = self.infos[guild_id]
+            if not isinstance(info, dict):
+                info = dataclasses.asdict(info)
+            for name, value in info.items():
+                setattr(wrapped, name, value)
+        wrapped.fill()
+        if guild_id in self.infos:
+            del self.infos[guild_id]
+        return wrapped
 
     def pop_info(self, ctx):
-        return self.infos.pop(ctx.guild.id, None)
+        return self.data.pop(ctx.guild.id, None)
 
     async def player_from_url(self, url, *, loop=None, stream=False):
         ytdl = youtube_dl.YoutubeDL(self.ytdl_opts)
