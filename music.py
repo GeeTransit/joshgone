@@ -49,8 +49,10 @@ class InfoWrapper:
     def fill(self):
         if not self.defined("version"):
             self.version = 0
-        while self.version != self.LATEST_VERSION:
-            getattr(self, f"_update{self.version}")()
+        while (version := self.version) != self.LATEST_VERSION:
+            getattr(self, f"_update{version}")()
+            if version == self.version:
+                raise TypeError(f"version unchanged: {version}")
 
     def _update0(self):
         if not self.defined("queue"):
