@@ -20,7 +20,7 @@ class Censor(commands.Cog):
     async def on_guild_remove(self, guild):
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             await db.execute("DELETE FROM server WHERE server_id = ?;", (guild.id,))
-        await db.commit()
+            await db.commit()
 
     @commands.command(name="reinit", ignore_extra=False)
     async def reinit_command(self, ctx):
