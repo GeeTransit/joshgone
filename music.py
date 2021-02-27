@@ -2,6 +2,7 @@
 
 import asyncio
 import dataclasses
+import random
 import typing
 from collections import deque
 
@@ -211,6 +212,19 @@ class Music(commands.Cog):
         if info.current is None:
             self.schedule(ctx)
         await ctx.send(f"Added to queue: stream {url}")
+
+    @commands.command()
+    async def shuffle(self, ctx):
+        """Shuffles the queue"""
+        info = self.get_info(ctx)
+        queue = info.queue
+        temp = []
+        while queue:
+            temp.append(queue.popleft())
+        random.shuffle(temp)
+        while temp:
+            queue.appendleft(temp.pop())
+        await ctx.send("Queue shuffled")
 
     @commands.command()
     async def volume(self, ctx, volume: float = None):
