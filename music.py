@@ -22,8 +22,8 @@ class Song:
 class InfoWrapper:
     id: int
     data: dict = dataclasses.field(repr=False)
-    LATEST_VERSION: typing.ClassVar[int] = 2
-    NAMES: typing.ClassVar[int] = "queue current waiting version loop".split()
+    LATEST_VERSION: typing.ClassVar[int] = 3
+    NAMES: typing.ClassVar[int] = "queue current waiting version loop processing".split()
 
     def __getattr__(self, name):
         try:
@@ -70,6 +70,11 @@ class InfoWrapper:
         if not self.defined("loop"):
             self.loop = False
         self.version = 2
+
+    def _update2(self):
+        if not self.defined("processing"):
+            self.processing = False
+        self.version = 3
 
 class Music(commands.Cog):
     _DEFAULT_YTDL_OPTS = {
@@ -145,36 +150,44 @@ class Music(commands.Cog):
 
     async def handle_advances(self):
         while True:
-            ctx, error = await self.advance_queue.get()
-            info = self.get_info(ctx)
-            try:
-                if error is not None:
-                    await ctx.send(f"Player error: {error!r}")
-                queue = info.queue
-                if info.loop and info.current is not None:
-                    queue.append(info.current)
-                info.current = None
-                if queue:
-                    current = queue.popleft()
-                    if isinstance(current, tuple):
-                        ty, query = current
-                        current = Song(ty, query)
-                    info.current = current
-                    after = lambda error, ctx=ctx: self.schedule(ctx, error)
-                    try:
-                        async with ctx.typing():
-                            source, title = await getattr(self, f"_play_{current.ty}")(current.query)
-                            ctx.voice_client.play(source, after=after)
-                        await ctx.send(f"Now playing: {title}")
-                    except Exception as e:
-                        await ctx.send(f"Internal Error: {e!r}")
-                        info.waiting = False
-                        await self.skip(ctx)
-                        self.schedule(ctx)
-                else:
-                    await ctx.send(f"Queue empty")
-            finally:
-                info.waiting = False
+            item = await self.advance_queue.get()
+            asyncio.create_task(self.handle_advance(item))
+
+    async def handle_advance(self, item):
+        ctx, error = item
+        info = self.get_info(ctx)
+        try:
+            if info.processing:
+                self.advance_queue.put_nowait(item)
+                return
+            info.processing = True
+            if error is not None:
+                await ctx.send(f"Player error: {error!r}")
+            queue = info.queue
+            if info.loop and info.current is not None:
+                queue.append(info.current)
+            info.current = None
+            if queue:
+                current = queue.popleft()
+                if isinstance(current, tuple):
+                    ty, query = current
+                    current = Song(ty, query)
+                info.current = current
+                after = lambda error, ctx=ctx: self.schedule(ctx, error)
+                async with ctx.typing():
+                    source, title = await getattr(self, f"_play_{current.ty}")(current.query)
+                    ctx.voice_client.play(source, after=after)
+                await ctx.send(f"Now playing: {title}")
+            else:
+                await ctx.send(f"Queue empty")
+        except Exception as e:
+            await ctx.send(f"Internal Error: {e!r}")
+            info.waiting = False
+            await self.skip(ctx)
+            self.schedule(ctx)
+        finally:
+            info.waiting = False
+            info.processing = False
 
     def schedule(self, ctx, error=None, *, force=False):
         info = self.get_info(ctx)
