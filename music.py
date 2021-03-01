@@ -237,8 +237,11 @@ class Music(commands.Cog):
             return
         if ctx.voice_client is None:
             return await ctx.send("Not connected to a voice channel")
-        if int(volume) == volume:
-            volume = int(volume)
+        try:
+            if int(volume) == volume:
+                volume = int(volume)
+        except (OverflowError, ValueError):
+            pass
         if not await self.bot.is_owner(ctx.author):
             # prevent insane ppl from doing this
             volume = min(100, volume)
