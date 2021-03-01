@@ -23,7 +23,7 @@ class InfoWrapper:
     id: int
     data: dict = dataclasses.field(repr=False)
     LATEST_VERSION: typing.ClassVar[int] = 2
-    NAMES: typing.ClassVar[int] = "queue current waiting version".split()
+    NAMES: typing.ClassVar[int] = "queue current waiting version loop".split()
 
     def __getattr__(self, name):
         try:
@@ -197,7 +197,11 @@ class Music(commands.Cog):
         return wrapped
 
     def pop_info(self, ctx):
-        return self.data.pop(ctx.guild.id, None)
+        wrapped = InfoWrapper(ctx.guild.id, self.data)
+        for name in InfoWrapper.NAMES:
+            if wrapped.defined(name):
+                delattr(wrapped, name)
+        return wrapped
 
     async def player_from_url(self, url, *, loop=None, stream=False):
         ytdl = youtube_dl.YoutubeDL(self.ytdl_opts)
