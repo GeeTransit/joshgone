@@ -18,7 +18,7 @@ class BruceChant(commands.Cog):
                     if not (row := await cursor.fetchone()) or not row[0]:
                         break
             await ctx.send(self.BRUCECHANT)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(2)
 
 def setup(bot):
     bot.add_cog(BruceChant(bot))

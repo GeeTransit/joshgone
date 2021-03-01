@@ -31,7 +31,7 @@ My boi Togohogo1 shouldn't be in first place.
                     if not (row := await cursor.fetchone()) or not row[0]:
                         break
             await ctx.send(self.TOGOCHANT)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(2)
 
     @commands.command(ignore_extra=False)
     async def togonoob(self, ctx, repeats: int = 5):
@@ -41,7 +41,7 @@ My boi Togohogo1 shouldn't be in first place.
                     if not (row := await cursor.fetchone()) or not row[0]:
                         break
             await ctx.send(self.TOGONOOB)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(2)
 
 def setup(bot):
     bot.add_cog(TogoChant(bot))
