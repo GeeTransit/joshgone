@@ -4,10 +4,12 @@ import asyncio
 import dataclasses
 import random
 import typing
+import traceback
 from collections import deque
 
 import discord
 from discord.ext import commands
+from discord.ext import tasks
 
 import youtube_dl
 
@@ -103,13 +105,14 @@ class Music(commands.Cog):
         self.infos = bot._music_info
         self.data = bot._music_data
         self.advance_queue = bot._music_advance_queue
-        self.advance_task = asyncio.create_task(self.handle_advances(), name="music_advancer")
+        self.advance_task = None
+        self.advancer.start()
         for name in InfoWrapper.NAMES:
             if name not in self.data:
                 self.data[name] = {}
 
     def cog_unload(self):
-        self.advance_task.cancel()
+        self.advancer.cancel()
 
     async def _play_local(self, query):
         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
@@ -119,36 +122,59 @@ class Music(commands.Cog):
         player, data = await self.player_from_url(url, stream=True)
         return player, data.get("title", url)
 
+    @tasks.loop(seconds=15)
+    async def advancer(self):
+        if self.advance_task is not None and self.advance_task.done():
+            try:
+                exc = self.advance_task.exception()
+            except asyncio.CancelledError:
+                pass
+            else:
+                print("Exception occured in advancer task:")
+                traceback.print_exception(None, exc, exc.__traceback__)
+            self.advance_task = None
+        if self.advance_task is None:
+            self.advance_task = asyncio.create_task(self.handle_advances(), name="music_advancer")
+
+    @advancer.after_loop
+    async def on_advancer_cancel(self):
+        if self.advancer.is_being_cancelled():
+            if self.advance_task is not None:
+                self.advance_task.cancel()
+                self.advance_task = None
+
     async def handle_advances(self):
         while True:
             ctx, error = await self.advance_queue.get()
             info = self.get_info(ctx)
-            if error is not None:
-                await ctx.send(f"Player error: {error!r}")
-            queue = info.queue
-            if info.loop and info.current is not None:
-                queue.append(info.current)
-            info.current = None
-            if queue:
-                current = queue.popleft()
-                if isinstance(current, tuple):
-                    ty, query = current
-                    current = Song(ty, query)
-                info.current = current
-                after = lambda error, ctx=ctx: self.schedule(ctx, error)
-                try:
-                    async with ctx.typing():
-                        source, title = await getattr(self, f"_play_{current.ty}")(current.query)
-                        ctx.voice_client.play(source, after=after)
-                    await ctx.send(f"Now playing: {title}")
-                except Exception as e:
-                    await ctx.send(f"Internal Error: {e!r}")
-                    info.waiting = False
-                    await self.skip(ctx)
-                    self.schedule(ctx)
-            else:
-                await ctx.send(f"Queue empty")
-            info.waiting = False
+            try:
+                if error is not None:
+                    await ctx.send(f"Player error: {error!r}")
+                queue = info.queue
+                if info.loop and info.current is not None:
+                    queue.append(info.current)
+                info.current = None
+                if queue:
+                    current = queue.popleft()
+                    if isinstance(current, tuple):
+                        ty, query = current
+                        current = Song(ty, query)
+                    info.current = current
+                    after = lambda error, ctx=ctx: self.schedule(ctx, error)
+                    try:
+                        async with ctx.typing():
+                            source, title = await getattr(self, f"_play_{current.ty}")(current.query)
+                            ctx.voice_client.play(source, after=after)
+                        await ctx.send(f"Now playing: {title}")
+                    except Exception as e:
+                        await ctx.send(f"Internal Error: {e!r}")
+                        info.waiting = False
+                        await self.skip(ctx)
+                        self.schedule(ctx)
+                else:
+                    await ctx.send(f"Queue empty")
+            finally:
+                info.waiting = False
 
     def schedule(self, ctx, error=None, *, force=False):
         info = self.get_info(ctx)
