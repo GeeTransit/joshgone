@@ -246,7 +246,7 @@ class Music(commands.Cog):
             self.schedule(ctx)
         await ctx.send(f"Added to queue: local {query}")
 
-    @commands.command(aliases=["yt", "play"])
+    @commands.command(aliases=["yt", "play", "p"])
     async def stream(self, ctx, *, url):
         """Plays from a url (almost anything youtube_dl supports)"""
         info = self.get_info(ctx)
@@ -309,7 +309,7 @@ class Music(commands.Cog):
             return
         await ctx.voice_client.disconnect()
 
-    @commands.command()
+    @commands.command(aliases=["c"])
     async def current(self, ctx):
         """Shows the current song"""
         query = None
@@ -320,7 +320,7 @@ class Music(commands.Cog):
                 query = current.query
         await ctx.send(f"Current: {query}")
 
-    @commands.command()
+    @commands.command(aliases=["q"])
     async def queue(self, ctx):
         """Shows the songs on queue"""
         queue = ()
@@ -363,7 +363,7 @@ class Music(commands.Cog):
         queue.clear()
         await ctx.send("Cleared queue")
 
-    @commands.command()
+    @commands.command(aliases=["s"])
     async def skip(self, ctx):
         """Skips current song"""
         info = self.get_info(ctx)
