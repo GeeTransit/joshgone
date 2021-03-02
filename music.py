@@ -158,11 +158,16 @@ class Music(commands.Cog):
         info = self.get_info(ctx)
         try:
             if info.processing:
+                await asyncio.sleep(1)
                 self.advance_queue.put_nowait(item)
                 return
             info.processing = True
             if error is not None:
                 await ctx.send(f"Player error: {error!r}")
+            if ctx.voice_client is None:
+                await ctx.send("Not connected to a voice channel anymore")
+                await self.leave(ctx)
+                return
             queue = info.queue
             if info.loop and info.current is not None:
                 queue.append(info.current)
