@@ -254,6 +254,10 @@ class Music(commands.Cog):
     @commands.command(aliases=["yt", "play", "p"])
     async def stream(self, ctx, *, url):
         """Plays from a url (almost anything youtube_dl supports)"""
+        if len(url) > 100:
+            raise ValueError("url too long (length over 100)")
+        if not url.isprintable():
+            raise ValueError(f"url not printable: {url!r}")
         info = self.get_info(ctx)
         queue = info.queue
         queue.append(Song("stream", url))
