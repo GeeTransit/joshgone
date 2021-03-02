@@ -26,6 +26,8 @@ class Chant(commands.Cog):
     @commands.has_permissions(manage_messages=True)
     async def _add(self, ctx, name: str, *, text: str):
         """Add / update a chant"""
+        if not name.isprintable():
+            raise ValueError(f"Name not printable: {name!r}")
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             await db.execute("INSERT OR REPLACE INTO chants VALUES (?, ?, ?);", (ctx.guild.id, name, text))
             await db.commit()
