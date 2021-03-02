@@ -1,3 +1,7 @@
+import asyncio
+import os
+
+import yoyo
 from discord.ext import commands
 
 class Admin(commands.Cog):
@@ -34,6 +38,18 @@ class Admin(commands.Cog):
     async def shutdown(self, ctx):
         await ctx.send("Shutting bot shut down.")
         await self.bot.close()
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def apply(self, ctx):
+        await asyncio.to_thread(self.apply_outstanding)
+        await ctx.send("Migrations applied.")
+
+    def apply_outstanding(self):
+        backend = yoyo.get_backend(f"sqlite:///{os.environ['JOSHGONE_DB']}")
+        migrations = yoyo.read_migrations("./migrations")
+        with backend.lock():
+            backend.apply_migrations(backend.to_apply(migrations))
 
 def setup(bot):
     bot.add_cog(Admin(bot))
