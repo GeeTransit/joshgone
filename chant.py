@@ -23,7 +23,10 @@ class Chant(commands.Cog):
         await ctx.send(f"Chants: {', '.join(names)}")
 
     @_chants.command(name="add", aliases=["update"])
-    @commands.has_permissions(manage_messages=True)
+    @commands.check_any(
+        commands.has_permissions(manage_messages=True),
+        commands.has_role("enchanter"),
+    )
     async def _add(self, ctx, name: str, *, text: str):
         """Add / update a chant"""
         if not name.isprintable():
@@ -44,7 +47,10 @@ class Chant(commands.Cog):
                     await ctx.send(f"Chant {name} doesn't exist")
 
     @_chants.command(name="remove", ignore_extra=False)
-    @commands.has_permissions(manage_messages=True)
+    @commands.check_any(
+        commands.has_permissions(manage_messages=True),
+        commands.has_role("enchanter"),
+    )
     async def _remove(self, ctx, name: str):
         """Remove a chant"""
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
