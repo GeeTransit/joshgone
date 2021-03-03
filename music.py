@@ -344,8 +344,13 @@ class Music(commands.Cog):
         queries = [song.query for song in queue]
         if not queries:
             queries = (None,)
+        paginator = commands.Paginator()
+        paginator.add_line(f"Queue [{length}]{' (looping)'*looping}:")
+        for query in queries:
+            paginator.add_line(query)
         string = "\n".join(map(str, queries))
-        await ctx.send(f"Queue [{length}]{' (looping)'*looping}:\n```\n{string}\n```")
+        for page in paginator.pages:
+            await ctx.send(page)
 
     @commands.command()
     async def remove(self, ctx, position: int):
