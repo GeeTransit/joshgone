@@ -260,10 +260,11 @@ class Music(commands.Cog):
             raise ValueError(f"url not printable: {url!r}")
         info = self.get_info(ctx)
         queue = info.queue
-        queue.append(Song("stream", url))
+        ty = "local" if url == "coco.mp4" else "stream"
+        queue.append(Song(ty, url))
         if info.current is None:
             self.schedule(ctx)
-        await ctx.send(f"Added to queue: stream {url}")
+        await ctx.send(f"Added to queue: {ty} {url}")
 
     @commands.command()
     async def shuffle(self, ctx):
