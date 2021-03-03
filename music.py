@@ -341,14 +341,12 @@ class Music(commands.Cog):
             queue = info.queue
             length = len(queue)
             looping = info.loop
-        queries = [song.query for song in queue]
-        if not queries:
-            queries = (None,)
+        if not queue:
+            queue = (None,)
         paginator = commands.Paginator()
         paginator.add_line(f"Queue [{length}]{' (looping)'*looping}:")
-        for query in queries:
-            paginator.add_line(query)
-        string = "\n".join(map(str, queries))
+        for i, song in enumerate(queue, start=1):
+            paginator.add_line(f"{i}: {song.query}")
         for page in paginator.pages:
             await ctx.send(page)
 
