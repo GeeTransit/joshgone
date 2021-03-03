@@ -10,41 +10,6 @@ class Censor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.Cog.listener()
-    async def on_guild_join(self, guild):
-        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
-            await db.execute("INSERT INTO server (server_id, running) VALUES (?, ?);", (guild.id, True))
-            await db.commit()
-
-    @commands.Cog.listener()
-    async def on_guild_remove(self, guild):
-        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
-            await db.execute("DELETE FROM server WHERE server_id = ?;", (guild.id,))
-            await db.commit()
-
-    @commands.command(name="reinit", ignore_extra=False)
-    async def reinit_command(self, ctx):
-        await self.on_guild_remove(ctx.guild)
-        await self.on_guild_join(ctx.guild)
-        await ctx.send("Reinitialized JoshGone.")
-
-    @commands.command(name="running", aliases=["r"], ignore_extra=False)
-    async def running_command(self, ctx, run: bool = None):
-        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
-            if run is None:
-                async with db.execute("SELECT running FROM server WHERE server_id = ? LIMIT 1;", (ctx.guild.id,)) as cursor:
-                    row = await cursor.fetchone()
-                if row is None:
-                    await self.on_guild_join(ctx.guild)
-                    async with db.execute("SELECT running FROM server WHERE server_id = ? LIMIT 1;", (ctx.guild.id,)) as cursor:
-                        row = await cursor.fetchone()
-                running = bool(row[0])
-                await ctx.send(f"JoshGone is currently {'running' if running else 'not running'}.")
-            else:
-                await db.execute("UPDATE server SET running = ? WHERE server_id = ?;", (run, ctx.guild.id))
-                await db.commit()
-                await ctx.send(f"JoshGone is now {'' if run else 'not '}running.")
-
     @commands.group(name="emojis", aliases=["e"], ignore_extra=False, pass_context=True, invoke_without_command=True)
     async def emojis(self, ctx):
         await self.emojis_list(ctx)
