@@ -19,8 +19,11 @@ class Chant(commands.Cog):
         """List available chants"""
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             async with db.execute("SELECT chant_name FROM chants WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
-                names = [row[0] async for row in cursor] or (None,)
-        await ctx.send(f"Chants: {', '.join(names)}")
+                names = [row[0] async for row in cursor]
+        length = len(names)
+        if not names:
+            names = (None,)
+        await ctx.send(f"Chants [{length}]: {', '.join(names)}")
 
     @_chants.command(name="add", aliases=["update"])
     @commands.check_any(
@@ -32,6 +35,11 @@ class Chant(commands.Cog):
         if not name.isprintable():
             raise ValueError(f"Name not printable: {name!r}")
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+            async with db.execute("SELECT COUNT(*) FROM chants WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
+                if not (row := await cursor.fetchone()):
+                    raise ValueError("could not get count of chants")
+                if row[0] > 100:
+                    raise ValueError(f"too many chants stored: {row[0]}")
             await db.execute("INSERT OR REPLACE INTO chants VALUES (?, ?, ?);", (ctx.guild.id, name, text))
             await db.commit()
         await ctx.send(f"Added chant {name}")
