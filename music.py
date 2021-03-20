@@ -254,6 +254,9 @@ class Music(commands.Cog):
     @commands.command(aliases=["yt", "play", "p"])
     async def stream(self, ctx, *, url):
         """Plays from a url (almost anything youtube_dl supports)"""
+        original_url = url
+        if url[0] == "<" and url[-1] == ">":
+            url = url[1:-1]
         if len(url) > 100:
             raise ValueError("url too long (length over 100)")
         if not url.isprintable():
@@ -264,7 +267,7 @@ class Music(commands.Cog):
         queue.append(Song(ty, url))
         if info.current is None:
             self.schedule(ctx)
-        await ctx.send(f"Added to queue: {ty} {url}")
+        await ctx.send(f"Added to queue: {ty} {original_url}")
 
     @commands.command()
     async def shuffle(self, ctx):
