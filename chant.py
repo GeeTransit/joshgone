@@ -66,15 +66,6 @@ class Chant(commands.Cog):
             await db.commit()
         await ctx.send(f"Removed chant {name}")
 
-    @_chants.command(name="clear", aliases=["c"], ignore_extra=False)
-    @commands.has_permissions(manage_messages=True)
-    async def _clear(self, ctx):
-        """Clear all chants"""
-        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
-            await db.execute("DELETE FROM removed_emoji WHERE server_id = ?;", (ctx.guild.id,))
-            await db.commit()
-        await ctx.send("Cleared chants")
-
     @commands.command(name="chant", aliases=["h"], ignore_extra=False)
     async def _chant(self, ctx, name: str, repeats: int = 5):
         """Repeat a chant multiple times"""
