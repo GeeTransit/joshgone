@@ -15,11 +15,13 @@ class Chant(commands.Cog):
         await self._list(ctx)
 
     @_chants.command(name="list", ignore_extra=False)
-    async def _list(self, ctx):
+    async def _list(self, ctx, debug: bool = False):
         """List available chants"""
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             async with db.execute("SELECT chant_name FROM chants WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
                 names = [row[0] async for row in cursor]
+        if debug:
+            names = [f"`{name}`" for name in names]
         length = len(names)
         if not names:
             names = (None,)
@@ -50,9 +52,9 @@ class Chant(commands.Cog):
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             async with db.execute("SELECT chant_text FROM chants WHERE server_id = ? AND chant_name = ? LIMIT 1;", (ctx.guild.id, name)) as cursor:
                 if (row := await cursor.fetchone()):
-                    await ctx.send(f"Chant {name}: {row[0]}")
+                    await ctx.send(f"Chant {name} {{`{name!r}`}}: {row[0]}")
                 else:
-                    await ctx.send(f"Chant {name} doesn't exist")
+                    await ctx.send(f"Chant {name} {{`{name!r}`}} doesn't exist")
 
     @_chants.command(name="remove", ignore_extra=False)
     @commands.check_any(
