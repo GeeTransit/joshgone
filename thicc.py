@@ -5,7 +5,7 @@ class Thicc(commands.Cog):
     mapping = {}
     for original, target in zip(
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-        "🇦🇧🇨🇩🇪🇫🇬🇭🇮🇯🇰🇱🇲🇳🇴🇵🇶🇷🇸🇹🇺🇻🇽🇾🇿",
+        "🇦🇧🇨🇩🇪🇫🇬🇭🇮🇯🇰🇱🇲🇳🇴🇵🇶🇷🇸🇹🇺🇻🇼🇽🇾🇿",
     ):
         mapping[original.upper()] = f"{target}\u200B"
         mapping[original.lower()] = f"{target}\u200B"
