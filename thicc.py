@@ -15,6 +15,11 @@ class Thicc(commands.Cog):
     ):
         mapping[original] = target
     for original, target in zip(
+        "*#",
+        ["*️⃣", "#️⃣"],
+    ):
+        mapping[original] = target
+    for original, target in zip(
         "0123456789",
         "zero one two three four five six seven eight nine ten".split(),
     ):
