@@ -54,7 +54,7 @@ class Gee(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command()
+    @commands.command(aliases=["g"])
     async def gee(self, ctx, *, arg=None):
         """Reply with something GeeTransit would say"""
         if arg is None:
