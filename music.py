@@ -356,23 +356,49 @@ class Music(commands.Cog):
         for page in paginator.pages:
             await ctx.send(page)
 
-    @commands.command()
-    async def remove(self, ctx, position: int):
-        """Removes a song on queue"""
+    def normalize_index(self, ctx, position, length):
         index = position
         if index > 0:
             index -= 1
+        if index < 0:
+            index += length
+        if not 0 <= index < length:
+            raise ValueError(position)
+        return index
+
+    @commands.command()
+    async def remove(self, ctx, position: int):
+        """Removes a song on queue"""
         info = self.get_info(ctx)
         queue = info.queue
-        if index < 0:
-            index += len(queue)
-        if not 0 <= index < len(queue):
+        try:
+            index = self.normalize_index(ctx, position, len(queue))
+        except ValueError:
             raise commands.CommandError(f"Index out of range [{position}]")
-            return
         queue.rotate(-index)
         song = queue.popleft()
         queue.rotate(index)
         await ctx.send(f"Removed song [{position}]: {song.query}")
+
+    @commands.command()
+    async def move(self, ctx, origin: int, target: int):
+        """Moves a song on queue"""
+        info = self.get_info(ctx)
+        queue = info.queue
+        try:
+            origin_index = self.normalize_index(ctx, origin, len(queue))
+        except ValueError:
+            raise commands.CommandError(f"Origin index out of range [{origin}]")
+        try:
+            target_index = self.normalize_index(ctx, target, len(queue))
+        except ValueError:
+            raise commands.CommandError(f"Target index out of range [{target}]")
+        queue.rotate(-origin_index)
+        song = queue.popleft()
+        queue.rotate(origin_index - target_index)
+        queue.appendleft(song)
+        queue.rotate(target_index)
+        await ctx.send(f"Moved song [{origin} -> {target}]: {song.query}")
 
     @commands.command()
     async def clear(self, ctx):
