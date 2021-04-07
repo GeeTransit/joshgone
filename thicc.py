@@ -10,13 +10,13 @@ class Thicc(commands.Cog):
         mapping[original.upper()] = f"{target}\u200B"
         mapping[original.lower()] = f"{target}\u200B"
     for original, target in zip(
-        "!?+-$",
-        "❗❓➕➖️💲",
+        "!?+-",
+        "❗❓➕➖",
     ):
         mapping[original] = target
     for original, target in zip(
-        "*#",
-        ["*️⃣", "#️⃣"],
+        "$*#",
+        ["️💲", "*️⃣", "#️⃣"],
     ):
         mapping[original] = target
     for original, target in zip(
