@@ -269,6 +269,13 @@ class Music(commands.Cog):
             self.schedule(ctx)
         await ctx.send(f"Added to queue: {ty} {url}")
 
+    @commands.command(name="batch_add")
+    async def _batch_add(self, ctx, *, urls):
+        """Plays from multiple urls split by lines"""
+        for url in urls.splitlines():
+            await self.stream(ctx, url=url)
+            await asyncio.sleep(0.1)
+
     @commands.command()
     async def shuffle(self, ctx):
         """Shuffles the queue"""
