@@ -7,7 +7,8 @@ import discord
 from discord.ext import commands
 
 # These extensions are loaded automatically on startup
-LOAD_ON_STARTUP = ["admin", "censor", "chant", "music", "database", "thicc", "gee"]
+LOAD_ON_STARTUP = ["admin", "censor", "chant", "music", "database", "thicc", "gee", "remind"]
+LOAD_ON_STARTUP += ["relay", "solver"]
 
 # We need intents to resolve a name to a Member object
 intents = discord.Intents.default()
