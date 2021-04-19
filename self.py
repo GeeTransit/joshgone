@@ -5,7 +5,8 @@ class Self(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.accept_self = False
+        if not hasattr(bot, "_self_accept"):
+            bot._self_accept = False
 
     def off(self):
         self.bot.process_commands = self.bot._old_process_commands
@@ -23,13 +24,15 @@ class Self(commands.Cog):
     @commands.command(name="self", ignore_extra=False, hidden=True)
     @commands.is_owner()
     async def _self(self, ctx, accept_self: bool):
-        if accept_self == self.accept_self:
+        if accept_self == self.bot._self_accept:
             return
-        self.accept_self = accept_self
+        self.bot._self_accept = accept_self
         if accept_self:
             self.on()
+            await ctx.send("Self accept is now on")
         else:
             self.off()
+            await ctx.send("Self accept is now off")
 
 def setup(bot):
     bot.add_cog(Self(bot))
