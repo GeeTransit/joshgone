@@ -15,11 +15,12 @@ class Remind(commands.Cog):
     async def _send_after(self, ctx, seconds, name, arg):
         try:
             await asyncio.sleep(seconds)
-            await ctx.send(arg)
         except asyncio.TaskCancelled:
+            self.tasks.pop(name, None)
             await ctx.send(f"Cancelled {name!r}")
-        finally:
-            self.tasks.pop(name)
+        else:
+            self.tasks.pop(name, None)
+            await ctx.send(arg)
 
     @commands.command()
     async def remind(self, ctx, name: str, minutes: int, *, arg):
