@@ -80,8 +80,12 @@ class Gee(commands.Cog):
             await ctx.send(f"{x}")
             return
 
-        # Pick random number given two bounds (a to b)
-        x = random.randint(*sorted((a, b)))
+        if (a, b) == (69, 420):
+            # Special numbers
+            x = random.choice((69, 420))
+        else:
+            # Pick random number given two bounds (a to b)
+            x = random.randint(*sorted((a, b)))
         await ctx.send(f"{x}")
 
 def setup(bot):
