@@ -61,36 +61,28 @@ class Gee(commands.Cog):
             arg = ""
         splitted = arg.split()
 
-        # Reply with a response if empty
-        if len(splitted) == 0:
+        try:
+            a = int(splitted[0])
+        except IndexError:
+            # Reply with a response if empty
             await ctx.send(random.choice(self.replies))
             return
+        except ValueError:
+            # Reply with yes or no to a question
+            await ctx.send(random.choice(self.replies_question))
+            return
 
-        # Pick random number given a bound (0 to a)
-        if len(splitted) == 1:
-            try:
-                a = int(splitted[0])
-            except ValueError:
-                pass
-            else:
-                x = random.randint(*sorted((0, a)))
-                await ctx.send(f"{x}")
-                return
+        try:
+            b = int(splitted[1])
+        except (ValueError, IndexError):
+            # Pick random number given a bound (0 to a)
+            x = random.randint(*sorted((0, a)))
+            await ctx.send(f"{x}")
+            return
 
         # Pick random number given two bounds (a to b)
-        if len(splitted) == 2:
-            try:
-                a = int(splitted[0])
-                b = int(splitted[1])
-            except ValueError:
-                pass
-            else:
-                x = random.randint(*sorted((a, b)))
-                await ctx.send(f"{x}")
-                return
-
-        # Reply with yes or no to a question
-        await ctx.send(random.choice(self.replies_question))
+        x = random.randint(*sorted((a, b)))
+        await ctx.send(f"{x}")
 
 def setup(bot):
     bot.add_cog(Gee(bot))
