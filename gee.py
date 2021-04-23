@@ -59,10 +59,11 @@ class Gee(commands.Cog):
         """Reply with something GeeTransit would say
 
         Usage:
-            %gee -> random response
-            %gee ... -> yes / no
-            %gee X ... -> random number in [0, X]
-            %gee X Y ... -> random number in [X, Y]
+            %gee                ->  random response
+            %gee ...            ->  yes / no
+            %gee X ...          ->  random number in [0, X]
+            %gee X Y ...        ->  random number in [X, Y]
+            %gee ... (or ...)+  ->  random choice
         """
         if arg is None:
             arg = ""
@@ -75,6 +76,10 @@ class Gee(commands.Cog):
             await ctx.send(random.choice(self.replies))
             return
         except ValueError:
+            if "or" in splitted:
+                # Reply with one of the choices
+                await ctx.send(random.choice(arg.split("or")))
+                return
             # Reply with yes or no to a question
             await ctx.send(random.choice(self.replies_question))
             return
