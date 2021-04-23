@@ -28,5 +28,22 @@ class Split(commands.Cog):
             await ctx.send(line)
             await asyncio.sleep(delay)
 
+    @commands.command(name="words")
+    async def _words(self, ctx, delay: typing.Optional[float] = 0.5, *words):
+        r"""Splits and sends the argument's words as separate messages
+
+        `delay` specifies the number of seconds between messages
+
+        Usage:
+            %words a b  ->  sends a, b
+        """
+        if not math.isfinite(delay):
+            raise ValueError(f"{delay!r} is not finite")
+        for word in words:
+            if not word or word.isspace():
+                continue
+            await ctx.send(word)
+            await asyncio.sleep(delay)
+
 def setup(bot):
     bot.add_cog(Split(bot))
