@@ -56,7 +56,14 @@ class Gee(commands.Cog):
 
     @commands.command(aliases=["g"])
     async def gee(self, ctx, *, arg=None):
-        """Reply with something GeeTransit would say"""
+        """Reply with something GeeTransit would say
+
+        Usage:
+            %gee -> random response
+            %gee ... -> yes / no
+            %gee X ... -> random number in [0, X]
+            %gee X Y ... -> random number in [X, Y]
+        """
         if arg is None:
             arg = ""
         splitted = arg.split()
