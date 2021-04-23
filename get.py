@@ -9,11 +9,16 @@ class Get(commands.Cog):
         self.bot = bot
 
     @commands.command(name="get")
-    async def _get(self, ctx, *indices: int):
-        """Gets a message from the channel's history
+    async def _get(self, ctx, *indices):
+        r"""Gets a message from the channel's history
 
         Used to create a single command from multiple parts when self
         accept is on.
+
+        Usage:
+            %get 1      ->  sends last message
+            %get 1 2    ->  sends last message \n second last message
+            %get 1 1    ->  sends last message \n last message
         """
         if any(i <= 0 for i in indices):
             raise ValueError("all indices must be positive")
