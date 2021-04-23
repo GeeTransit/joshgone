@@ -23,16 +23,25 @@ class Remind(commands.Cog):
             await ctx.send(arg)
 
     @commands.command()
-    async def remind(self, ctx, name: str, minutes: int, *, arg):
+    async def remind(self, ctx, name: str, minutes, *, arg):
         """Sends the message after the specified number of minutes
 
         Set name to - or -- to get a randomized reminder name.
+        Add a 's' or 'seconds' prefix to specify seconds instead of minutes.
         """
         if name == "-" or name == "--":
             name = f"Reminder-{random.randint(100, 999)}"
         if name in self.tasks:
             raise ValueError(f"{name!r} already in tasks")
-        task = asyncio.create_task(self._send_after(ctx, 60 * minutes, name, arg))
+        if minutes.endswith("seconds"):
+            minutes = minutes.removesuffix("seconds")
+            seconds = int(minutes)
+        elif minutes.endswith("s"):
+            minutes = minutes.removesuffix("s")
+            seconds = int(minutes)
+        else:
+            seconds = int(minutes) * 60
+        task = asyncio.create_task(self._send_after(ctx, seconds, name, arg))
         self.tasks[name] = task
         await ctx.send(f"Added reminder with name {name!r}")
 
