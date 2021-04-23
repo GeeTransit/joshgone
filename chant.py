@@ -1,5 +1,6 @@
 import os
 import asyncio
+import math
 
 import aiosqlite
 from discord.ext import commands
@@ -69,8 +70,14 @@ class Chant(commands.Cog):
         await ctx.send(f"Removed chant {name}")
 
     @commands.command(name="chant", aliases=["h"], ignore_extra=False)
-    async def _chant(self, ctx, name: str, repeats: int = 5):
-        """Repeat a chant multiple times"""
+    async def _chant(self, ctx, name: str, repeats: int = 5, delay: float = 2):
+        """Repeat a chant multiple times
+
+        `repeat` specifies the number of times to repeat the chant
+        `delay` specifies the number of seconds to wait between chants
+        """
+        if not math.isfinite(delay):
+            raise ValueError(f"{delay!r} is not finite")
         for _ in range(repeats):
             async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
                 async with db.execute("SELECT running FROM server WHERE server_id = ? LIMIT 1;", (ctx.guild.id,)) as cursor:
@@ -84,7 +91,7 @@ class Chant(commands.Cog):
                     if not text:
                         break
             await ctx.send(text)
-            await asyncio.sleep(2)
+            await asyncio.sleep(delay)
 
 def setup(bot):
     bot.add_cog(Chant(bot))
