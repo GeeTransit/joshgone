@@ -93,5 +93,13 @@ class Chant(commands.Cog):
             await ctx.send(text)
             await asyncio.sleep(delay)
 
+    @commands.command(name="chant1", aliases=["h1"], ignore_extra=False)
+    async def _chant1(self, ctx, name: str, delay: float = 2):
+        """Repeats a chant once
+
+        `delay` specifies the number of seconds to wait between chants
+        """
+        await self._chant(ctx, name, 1, delay)
+
 def setup(bot):
     bot.add_cog(Chant(bot))
