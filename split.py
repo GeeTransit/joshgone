@@ -14,7 +14,7 @@ class Split(commands.Cog):
     async def _split(self, ctx, delay: typing.Optional[float] = 0.5, *, lines):
         """Splits and sends the argument's lines as separate messages
 
-        Used to package multiple commands into a single command when self
+        Used to send multiple commands from a single command when self
         accept is on.
 
         `delay` specifies the number of seconds between messages
