@@ -41,7 +41,7 @@ class Chant(commands.Cog):
             async with db.execute("SELECT COUNT(*) FROM chants WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
                 if not (row := await cursor.fetchone()):
                     raise ValueError("could not get count of chants")
-                if row[0] > 100:
+                if row[0] >= 500:
                     raise ValueError(f"too many chants stored: {row[0]}")
             await db.execute("INSERT OR REPLACE INTO chants VALUES (?, ?, ?);", (ctx.guild.id, name, text))
             await db.commit()
