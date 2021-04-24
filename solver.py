@@ -7,7 +7,7 @@ class Solver(commands.Cog):
     NUM = r"\d+(?:\.\d*)?"
     VAR = r"(?!\d)\w"
     SIGN = r"[+-]"
-    EXPR = fr"(?:({SIGN}) |())(?:(?:({NUM}) |())({VAR})|({NUM})())"  # sign, num, var
+    EXPR = fr"((?:{SIGN} )*)(?:(?:({NUM}) |())({VAR})|({NUM})())"  # sign, num, var
 
     def __init__(self, bot):
         self.bot = bot
@@ -36,9 +36,10 @@ class Solver(commands.Cog):
                     raise ValueError(f"couldn't parse: {expr[last:match.start()]}")
 
                 # Get the match's groups
-                sign, num, var = filter(lambda i: i is not None, match.groups())
+                signs, num, var = filter(lambda i: i is not None, match.groups())
+                signs = signs.split()
                 # Only the first term can omit the +/-
-                if not sign and not first:
+                if not signs and not first:
                     raise ValueError(f"missing sign for {num}{var}")
                 # Default to 1 (such as when a variable is passed: 7+a)
                 if not num:
@@ -46,8 +47,9 @@ class Solver(commands.Cog):
 
                 # Turn the value into a Python int / float
                 value = float(num) if "." in num else int(num)
-                if sign == "-":
-                    value *= -1
+                for sign in signs:
+                    if sign == "-":
+                        value *= -1
 
                 # Update expression info
                 if var:
