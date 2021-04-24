@@ -28,13 +28,16 @@ class Chant(commands.Cog):
             names = (None,)
         await ctx.send(f"Chants [{length}]: {', '.join(names)}")
 
-    @_chants.command(name="add", aliases=["update"])
+    @_chants.command(name="update")
     @commands.check_any(
         commands.has_permissions(manage_messages=True),
         commands.has_role("enchanter"),
     )
-    async def _add(self, ctx, name: str, *, text: str):
-        """Add / update a chant"""
+    async def _update(self, ctx, name, *, text):
+        """Update a chant
+
+        This will silently overwrite any previous chant with the same name.
+        """
         if not name.isprintable():
             raise ValueError(f"Name not printable: {name!r}")
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
@@ -44,6 +47,32 @@ class Chant(commands.Cog):
                 if row[0] >= 500:
                     raise ValueError(f"too many chants stored: {row[0]}")
             await db.execute("INSERT OR REPLACE INTO chants VALUES (?, ?, ?);", (ctx.guild.id, name, text))
+            await db.commit()
+        await ctx.send(f"Updated chant {name}")
+
+    @_chants.command(name="add")
+    @commands.check_any(
+        commands.has_permissions(manage_messages=True),
+        commands.has_role("enchanter"),
+    )
+    async def _add(self, ctx, name, *, text):
+        """Add a chant
+
+        This will fail if a chant with the same name already exists.
+        """
+        if not name.isprintable():
+            raise ValueError(f"Name not printable: {name!r}")
+        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+            async with db.execute("SELECT chant_text FROM chants WHERE server_id = ? AND chant_name = ? LIMIT 1;", (ctx.guild.id, name)) as cursor:
+                if (row := await cursor.fetchone()):
+                    await ctx.send(f"Chant {name} exists")
+                    return
+            async with db.execute("SELECT COUNT(*) FROM chants WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
+                if not (row := await cursor.fetchone()):
+                    raise ValueError("could not get count of chants")
+                if row[0] >= 500:
+                    raise ValueError(f"too many chants stored: {row[0]}")
+            await db.execute("INSERT INTO chants VALUES (?, ?, ?);", (ctx.guild.id, name, text))
             await db.commit()
         await ctx.send(f"Added chant {name}")
 
