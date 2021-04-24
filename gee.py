@@ -1,4 +1,5 @@
 import random
+import re
 
 import discord
 from discord.ext import commands
@@ -78,7 +79,7 @@ class Gee(commands.Cog):
         except ValueError:
             if "or" in splitted:
                 # Reply with one of the choices
-                await ctx.send(random.choice(arg.split("or")))
+                await ctx.send(random.choice(re.split(r"\bor\b", arg)))
                 return
             # Reply with yes or no to a question
             await ctx.send(random.choice(self.replies_question))
