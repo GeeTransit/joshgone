@@ -22,7 +22,7 @@ class Get(commands.Cog):
             %get 1 1    ->  sends last message \n last message
             %get 1.0    ->  sends last message
             %get 1.1    ->  sends last message's first word
-            %get 1.-1    ->  sends last message's last word
+            %get 1.-1   ->  sends last message's last word
         """
         # \d means [0-9], \s means whitespace
         pattern = r"\s*(\d+)(?:\s*\.\s*(?:([+-]?)\s*|())(\d+)|()())\s*"
