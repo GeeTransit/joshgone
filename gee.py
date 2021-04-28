@@ -5,52 +5,15 @@ import discord
 from discord.ext import commands
 
 class Gee(commands.Cog):
-    replies = [
-        "dang lol",
-        "bruga",
-        "lmao",
-        "fax",
-        "brug lol",
-        "lol",
-        "o ezpz",
-        "brug tru",
-        "damn",
-        "dang",
-        "tru",
-        "lmaoo",
-        "big fax",
-        "o really",
-        "ebic",
-        "o dang",
-        "wut lol",
-        "wtf",
-        "damn boi",
-        "tooez",
-        "pog",
-        "lol aight",
-        "o bruga",
-        "sus",
-        "ree",
-        "yeebruh",
-        "xD",
-        "bruh",
-        "frig",
-        "pong",
-        "lol pong",
-        "ezpz",
-        "bruh moment",
-        "ez",
-        "monke",
-    ]
-    replies_question = [
-        "ye lol",
-        "lol idk",
-        "na lol",
-        "ye ik",
-        "na",
-        "ye",
-        "bruh na",
-    ]
+    replies = [reply.replace("-", " ") for reply in '''
+        dang-lol  bruga  lmao  fax  brug-lol  lol  o-ezpz  brug-tru  damn
+        dang  tru  lmaoo  big-fax  o-really  ebic  o-dang  wut-lol  damn-boi
+        tooez  pog  lol-aight  o-bruga  sus  ree  yeebruh  xD  bruh  frig
+        pong  lol-pong  ezpz  bruh-moment  ez  monke
+    '''.split()]
+    replies_question = [reply.replace("-", " ") for reply in '''
+        ye-lol  lol-idk  na-lol  ye-ik  na  ye  bruh-na
+    '''.split()]
 
     def __init__(self, bot):
         self.bot = bot
