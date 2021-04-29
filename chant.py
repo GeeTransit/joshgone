@@ -1,4 +1,6 @@
 import os
+import typing
+import re
 import asyncio
 import math
 
@@ -15,6 +17,67 @@ class Chant(commands.Cog):
         """Configure chants"""
         await self._list(ctx)
 
+    @staticmethod
+    def pack(strings, *, maxlen=2000):
+        current = []
+        length = 0
+        for name in strings:
+            if len(name) + length > maxlen:
+                yield "".join(current)
+                current = []
+                length = 0
+            length += len(name)
+            current.append(name)
+        if current:
+            yield "".join(current)
+
+    @_chants.command(name="regexlist", ignore_extra=False, hidden=True)
+    async def _regexlist(self, ctx, max_amount: typing.Optional[int] = -1, *, regex):
+        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+            async with db.execute("SELECT chant_name FROM chants WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
+                names = [row[0] async for row in cursor]
+        found = []
+        for name in names:
+            if len(found) == max_amount:
+                break
+            if not re.search(regex, name):
+                continue
+            found.append(name)
+        length = len(found)
+        if not found:
+            found = ["None"]
+        for i in range(1, len(found)):
+            found[i] = f", {found[i]}"
+        found.insert(0, f"Found {length}: ")
+        for message in self.pack(found):
+            await ctx.send(message)
+
+    @_chants.command(name="regexremove", ignore_extra=False, hidden=True)
+    @commands.is_owner()
+    async def _regexremove(self, ctx, max_amount: typing.Optional[int] = -1, *, regex):
+        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+            async with db.execute("SELECT chant_name FROM chants WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
+                names = [row[0] async for row in cursor]
+        removed = []
+        for name in names:
+            if len(remove) == max_amount:
+                break
+            if not re.search(regex, name):
+                continue
+            removed.append(name)
+        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+            for name in removed:
+                await db.execute("DELETE FROM chants WHERE server_id = ? AND chant_name = ?;", (ctx.guild.id, name))
+            await db.commit()
+        length = len(removed)
+        if not removed:
+            removed = ["None"]
+        for i in range(1, len(removed)):
+            removed[i] = f", {removed[i]}"
+        removed.insert(0, f"Removed {length}: ")
+        for message in self.pack(removed):
+            await ctx.send(message)
+
     @_chants.command(name="list", ignore_extra=False)
     async def _list(self, ctx, debug: bool = False):
         """List available chants"""
@@ -25,8 +88,12 @@ class Chant(commands.Cog):
             names = [f"`{name}`" for name in names]
         length = len(names)
         if not names:
-            names = (None,)
-        await ctx.send(f"Chants [{length}]: {', '.join(names)}")
+            names = ["None"]
+        for i in range(1, len(names)):
+            names[i] = f", {names[i]}"
+        names.insert(0, f"Chants [{length}]: ")
+        for message in self.pack(names):
+            await ctx.send(message)
 
     @_chants.command(name="update")
     @commands.check_any(
@@ -38,6 +105,8 @@ class Chant(commands.Cog):
 
         This will silently overwrite any previous chant with the same name.
         """
+        if len(name) > 35:
+            raise ValueError("name too long (length over 35)")
         if not name.isprintable():
             raise ValueError(f"Name not printable: {name!r}")
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
@@ -60,6 +129,8 @@ class Chant(commands.Cog):
 
         This will fail if a chant with the same name already exists.
         """
+        if len(name) > 35:
+            raise ValueError("name too long (length over 35)")
         if not name.isprintable():
             raise ValueError(f"Name not printable: {name!r}")
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
