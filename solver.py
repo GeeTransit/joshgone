@@ -1,7 +1,11 @@
 import math
 import re
 
+import simpleeval
 from discord.ext import commands
+
+# To prevent my computer from dying
+simpleeval.MAX_POWER = 40000
 
 class Solver(commands.Cog):
     NUM = r"\d+(?:\.\d*)?"
@@ -12,8 +16,9 @@ class Solver(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(hidden=True)
+    @commands.command()
     async def solve(self, ctx, *, eq=""):
+        """Solves a very simple linear equation (only + and -)"""
         infos = []  # Holds constant and coefficient of variable
         name = None  # Name of the variable
 
@@ -115,6 +120,11 @@ class Solver(commands.Cog):
             await ctx.send(f"{name} = {check}")
         else:
             await ctx.send(f"{first_const}")
+
+    @commands.command()
+    async def calc(self, ctx, *, expr):
+        """Calculates an expression"""
+        await ctx.send(simpleeval.simple_eval(expr))
 
 def setup(bot):
     bot.add_cog(Solver(bot))
