@@ -7,6 +7,10 @@ from discord.ext import commands
 # To prevent my computer from dying
 simpleeval.MAX_POWER = 40000
 
+# Add extra functions
+evaluator = simpleeval.SimpleEval()
+evaluator.functions["round"] = round
+
 class Solver(commands.Cog):
     NUM = r"\d+(?:\.\d*)?"
     VAR = r"(?!\d)\w"
@@ -124,7 +128,11 @@ class Solver(commands.Cog):
     @commands.command()
     async def calc(self, ctx, *, expr):
         """Calculates an expression"""
-        await ctx.send(simpleeval.simple_eval(expr))
+        # First strip any potential backticks
+        for _ in range(3):
+            if expr[0] == "`" == expr[-1] and len(expr) > 1:
+                expr = expr[1:-1]
+        await ctx.send(evaluator.eval(expr))
 
 def setup(bot):
     bot.add_cog(Solver(bot))
