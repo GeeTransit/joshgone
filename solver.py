@@ -132,6 +132,8 @@ class Solver(commands.Cog):
         for _ in range(3):
             if expr[0] == "`" == expr[-1] and len(expr) > 1:
                 expr = expr[1:-1]
+            else:
+                break
         await ctx.send(evaluator.eval(expr))
 
 def setup(bot):
