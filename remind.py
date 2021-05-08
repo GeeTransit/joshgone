@@ -44,6 +44,11 @@ class Remind(commands.Cog):
             -s / -seconds
             -m / -minutes
             -h / -hours
+
+        Usage:
+            %remind - 15 breaktime      ->  sends "breaktime" in 15 minutes
+            %remind - 69s haha nice     ->  sends "haha nice" in 69 seconds
+            %remind - 24h tomorrow      ->  sends "tomorrow" in 24 hours
         """
         if name == "-" or name == "--":
             name = f"Reminder-{random.randint(100, 999)}"
