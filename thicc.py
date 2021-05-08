@@ -38,7 +38,7 @@ class Thicc(commands.Cog):
         """Convert letters to emojis"""
         result = []
         end = 0
-        for match in re.finditer(ignore_regex, message):
+        for match in re.finditer(self.ignore_regex, message):
             if unmatched := message[end : match.start()]:
                 result.append("".join(self.mapping.get(char, char) for char in unmatched))
             result.append(match[0])
