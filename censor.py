@@ -132,7 +132,12 @@ class Censor(commands.Cog):
                     if await cursor.fetchone():
                         break
             else:
-                return
+                for char in message.content:
+                    async with db.execute("SELECT * FROM removed_emoji WHERE server_id = ? AND emoji_id = ? LIMIT 1;", (message.guild.id, char)) as cursor:
+                        if await cursor.fetchone():
+                            break
+                else:
+                    return
             await author.send(f"Message deleted:\n```\n{message.content}\n```")
             await message.delete()
 
