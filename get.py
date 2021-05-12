@@ -9,7 +9,7 @@ class Get(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="get")
+    @commands.command(name="get", require_var_positional=True)
     async def _get(self, ctx, *indices):
         r"""Gets a message from the channel's history
 
