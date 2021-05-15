@@ -75,6 +75,10 @@ async def on_command_error(ctx, error):
     # Unpack the error for cleaner error messages
     if isinstance(error, commands.CommandInvokeError):
         error = error.__cause__ or error
-    await ctx.send(f"Oops, an error occurred: `{error!r}`")
+    try:
+        await ctx.send(f"Oops, an error occurred: `{error!r}`")
+    except Exception:
+        print(f"Error: {error!r}")
+        raise
 
 bot.run(os.environ["JOSHGONE_TOKEN"])
