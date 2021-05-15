@@ -7,10 +7,10 @@ import discord
 from discord.ext import commands
 
 # These extensions are loaded automatically on startup
-LOAD_ON_STARTUP = (
-    "admin censor chant music database thicc gee remind split get relay "
-    "solver sort"
-).split()
+LOAD_ON_STARTUP = '''
+    admin censor chant music database thicc gee remind split get relay solver
+    sort
+'''.split()
 
 # We need intents to resolve a name to a Member object
 intents = discord.Intents.default()
