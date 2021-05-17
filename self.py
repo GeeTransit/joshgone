@@ -23,7 +23,11 @@ class Self(commands.Cog):
 
     @commands.command(name="self", ignore_extra=False, hidden=True)
     @commands.is_owner()
-    async def _self(self, ctx, accept_self: bool):
+    async def _self(self, ctx, accept_self: bool = None):
+        if accept_self is None:
+            state = "on" if self.bot._self_accept else "off"
+            await ctx.send(f"Self accept is currently {state}")
+            return
         if accept_self == self.bot._self_accept:
             return
         self.bot._self_accept = accept_self
