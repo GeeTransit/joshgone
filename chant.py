@@ -6,6 +6,7 @@ import math
 
 import aiosqlite
 from discord.ext import commands
+from discord.utils import escape_markdown
 
 class Chant(commands.Cog):
 
@@ -85,7 +86,11 @@ class Chant(commands.Cog):
             async with db.execute("SELECT chant_name FROM chants WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
                 names = [row[0] async for row in cursor]
         if debug:
-            names = [f"`{name}`" for name in names]
+            for i, name in enumerate(names):
+                names[i] = "``" + name.replace("`", "\u200b`\u200b") + "``"
+        else:
+            for i, name in enumerate(names):
+                names[i] = escape_markdown(name)
         length = len(names)
         if not names:
             names = ["None"]
