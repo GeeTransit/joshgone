@@ -2,6 +2,7 @@ import asyncio
 import os
 
 import yoyo
+import discord
 from discord.ext import commands
 
 class Admin(commands.Cog):
@@ -65,24 +66,27 @@ class Admin(commands.Cog):
             del lines[0]
             del lines[-1]
         if ctx.author.id != self.bot.owner_id:
-            message = await ctx.send(f"Awaiting approval...")
-            await message.add_reaction("✅")
-            await message.add_reaction("❌")
-            def check(reaction, user):
-                return (
-                    reaction.message.id == message.id
-                    and reaction.emoji in {"✅", "❌"}
-                    and user.id == self.bot.owner_id
-                )
+            message = await ctx.reply(f"Awaiting approval...", mention_author=False)
             try:
-                reaction, user = await self.bot.wait_for("reaction_add", timeout=60, check=check)
-            except asyncio.TimeoutError:
-                await message.edit(content=f"{message.content}\nApproval timed out")
-                return
-            if reaction.emoji == "❌":
-                await message.edit(content=f"{message.content}\nCode denied :(")
-                return
-            await message.edit(content=f"{message.content}\nCode approved :D")
+                await message.add_reaction("✅")
+                await message.add_reaction("❌")
+                def check(reaction, user):
+                    return (
+                        reaction.message.id == message.id
+                        and reaction.emoji in {"✅", "❌"}
+                        and user.id == self.bot.owner_id
+                    )
+                try:
+                    reaction, user = await self.bot.wait_for("reaction_add", timeout=60, check=check)
+                except asyncio.TimeoutError:
+                    await message.edit(content=f"{message.content}\nApproval timed out")
+                    return
+                if reaction.emoji == "❌":
+                    await message.edit(content=f"{message.content}\nCode denied :(")
+                    return
+                await message.edit(content=f"{message.content}\nCode approved :D")
+            except discord.NotFound:
+                pass
         for i, line in enumerate(lines):
             lines[i] = f"    {line}"
         lines.insert(0, "async def ____thingy(bot, ctx):\n    pass")
