@@ -5,8 +5,17 @@ import asyncio
 import math
 
 import aiosqlite
+import discord
 from discord.ext import commands
 from discord.utils import escape_markdown
+
+class Dashes(commands.Converter):
+    async def convert(self, ctx, argument):
+        if not argument:
+            raise commands.BadArgument("argument does not consist of dashes only")
+        if not all(char == "-" for char in argument):
+            raise commands.BadArgument("argument does not consist of dashes only")
+        return "-"
 
 class Chant(commands.Cog):
 
@@ -120,7 +129,7 @@ class Chant(commands.Cog):
                     raise ValueError("could not get count of chants")
                 if row[0] >= 500:
                     raise ValueError(f"too many chants stored: {row[0]}")
-            await db.execute("INSERT OR REPLACE INTO chants VALUES (?, ?, ?);", (ctx.guild.id, name, text))
+            await db.execute("INSERT OR REPLACE INTO chants VALUES (?, ?, ?, ?);", (ctx.guild.id, name, text, ctx.author.id))
             await db.commit()
         await ctx.send(f"Updated chant {name}")
 
@@ -148,7 +157,7 @@ class Chant(commands.Cog):
                     raise ValueError("could not get count of chants")
                 if row[0] >= 500:
                     raise ValueError(f"too many chants stored: {row[0]}")
-            await db.execute("INSERT INTO chants VALUES (?, ?, ?);", (ctx.guild.id, name, text))
+            await db.execute("INSERT INTO chants VALUES (?, ?, ?, ?);", (ctx.guild.id, name, text, ctx.author.id))
             await db.commit()
         await ctx.send(f"Added chant {name}")
 
@@ -161,6 +170,53 @@ class Chant(commands.Cog):
                     await ctx.send(f"Chant {name} {{`{name!r}`}}: {row[0]}")
                 else:
                     await ctx.send(f"Chant {name} {{`{name!r}`}} doesn't exist")
+
+    @_chants.command(name="owner", ignore_extra=False)
+    async def _owner(self, ctx, name: str, new_owner: typing.Union[discord.Member, Dashes] = None):
+        """Check or set the owner of a chant
+
+        To change a chant's owner, either the chant must have no owner, or you
+        are the bot owner, guild owner, or the chant owner.
+
+        To clear the owner, pass "-" as the new owner.
+
+        Usage:
+            %chants owner chant             ->  gets the chant's current owner
+            %chants owner chant GeeTransit  ->  make GeeTransit the chant owner
+            %chants owner chant -           ->  removes the chant's owner
+        """
+        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+            async with db.execute("SELECT owner_id FROM chants WHERE server_id = ? AND chant_name = ? LIMIT 1;", (ctx.guild.id, name)) as cursor:
+                row = await cursor.fetchone()
+                if row is None:
+                    await ctx.send(f"Chant {name} doesn't exist")
+                    return
+                current = row[0]
+        # Get owner
+        if new_owner is None:
+            if current is None:
+                await ctx.send(f"Chant {name} has no owner")
+            else:
+                await ctx.send(f"Chant {name} owner is {ctx.guild.get_member(row[0]).name}")
+            return
+        # If there's already an owner, make sure they are allowed to change it
+        if current is not None:
+            if ctx.author.id not in (self.bot.owner_id, ctx.guild.owner_id, current):
+                await ctx.send("You are not allowed to change this chant's owner")
+                return
+        # Store the chant's new owner
+        if new_owner == "-":
+            new_owner_value = None
+        else:
+            new_owner_value = new_owner.id
+        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+            await db.execute("UPDATE chants SET owner_id = ? WHERE server_id = ? AND chant_name = ?;", (new_owner_value, ctx.guild.id, name))
+            await db.commit()
+        # Respond with the new owner
+        if new_owner == "-":
+            await ctx.send(f"Chant {name} now has no owner")
+        else:
+            await ctx.send(f"Chant {name} owner now is {new_owner.name}")
 
     @_chants.command(name="remove", ignore_extra=False)
     @commands.check_any(
