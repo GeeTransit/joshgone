@@ -11,6 +11,13 @@ simpleeval.MAX_POWER = 40000
 evaluator = simpleeval.SimpleEval()
 evaluator.functions["round"] = round
 
+def factorial(num):
+    if num > 25:
+        raise ValueError("yeebruh u tryna 🅱️reak 🅱ot")
+    return math.factorial(num)
+evaluator.functions["factorial"] = factorial
+evaluator.functions["fax"] = factorial
+
 class Solver(commands.Cog):
     NUM = r"\d+(?:\.\d*)?"
     VAR = r"(?!\d)\w"
