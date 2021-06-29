@@ -86,7 +86,7 @@ class Admin(commands.Cog):
                     return
                 await message.edit(content=f"{message.content}\nCode approved :D")
             except discord.NotFound:
-                pass
+                return
         for i, line in enumerate(lines):
             lines[i] = f"    {line}"
         lines.insert(0, "async def ____thingy(bot, ctx):\n    pass")
