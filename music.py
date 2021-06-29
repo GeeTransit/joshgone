@@ -269,6 +269,38 @@ class Music(commands.Cog):
             self.schedule(ctx)
         await ctx.send(f"Added to queue: {ty} {url}")
 
+    @commands.command()
+    async def _add_playlist(self, ctx, *, url):
+        """Adds all songs in a playlist to the queue"""
+        if len(url) > 100:
+            raise ValueError("url too long (length over 100)")
+        if not url.isprintable():
+            raise ValueError(f"url not printable: {url!r}")
+        bracketed = False
+        if url[0] == "<" and url[-1] == ">":
+            bracketed = True
+            url = url[1:-1]
+        info = self.get_info(ctx)
+        queue = info.queue
+        ytdl = youtube_dl.YoutubeDL(self.ytdl_opts | {
+            'noplaylist': None,
+            'playlistend': None,
+            "extract_flat": True,
+            "forcejson": True,
+        })
+        data = await asyncio.to_thread(ytdl.extract_info, url, download=False)
+        if 'entries' not in data:
+            raise ValueError("cannot find entries of playlist")
+        entries = data['entries']
+        for entry in entries:
+            url = f"https://www.youtube.com/watch?v={entry['url']}"
+            if bracketed:
+                url = f"<{url}>"
+            queue.append(Song("stream", url))
+        if info.current is None:
+            self.schedule(ctx)
+        await ctx.send(f"Added playlist to queue: {url}")
+
     @commands.command(name="batch_add")
     async def _batch_add(self, ctx, *, urls):
         """Plays from multiple urls split by lines"""
