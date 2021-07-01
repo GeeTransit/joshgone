@@ -125,6 +125,8 @@ def init_piano():
 def piano(index=A4_INDEX, *, seconds=1):
     """Returns a piano sound at index
 
+    Note that passing a time is now deprecated. Wrap exact around this instead.
+
     If the length of time is shorter than a second, it will be cut off.
     If the length of time is longer than a second, silence will be added.
 
