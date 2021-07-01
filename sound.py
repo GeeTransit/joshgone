@@ -16,7 +16,7 @@ Sound generators:
 
 Sound effects:
     fade
-    scale
+    volume
     cut
     pad
     exact
@@ -179,10 +179,11 @@ def both(iterator, /):
     for num in iterator:
         yield num, num
 
-def scale(scale, iterator, /):
-    """Multiplies each point by scale"""
+def volume(factor, iterator, /):
+    """Multiplies each point by the specified factor"""
     for num in iterator:
-        yield num * scale
+        yield num * factor
+scale = volume  # Old name
 
 def cut(seconds, sound, /):
     """Ends the sound after the specified time"""
