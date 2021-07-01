@@ -1,9 +1,31 @@
 import asyncio
 import os
+import pydoc
+import functools
 
 import yoyo
 import discord
 from discord.ext import commands
+
+@functools.wraps(pydoc.render_doc)
+def helps(*args, **kwargs):
+    stack = []
+    for char in pydoc.render_doc(*args, **kwargs):
+        if char == "\b":
+            if stack:
+                stack.pop()
+            continue
+        stack.append(char)
+    return "".join(stack)
+
+async def pages(ctx, obj):
+    """Paginates obj and sends them to the current context"""
+    obj = str(obj)
+    paginator = commands.Paginator()
+    for line in obj.splitlines():
+        paginator.add_line(line)
+    for page in paginator.pages:
+        await ctx.send(page)
 
 class Admin(commands.Cog):
 
