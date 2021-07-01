@@ -19,6 +19,7 @@ Sound effects:
     scale
 
 Music functions:
+    split_music
     music_to_notes
     notes_to_sine
     _layer  (unfinalized API)
@@ -370,6 +371,33 @@ def music_to_notes(music, /):
         last_note = note
     return notes
 music_to_sounds = music_to_notes  # Old name
+
+def split_music(music):
+    r"""Splits music into individual sequences
+
+    Lines starting with a slash "/" will be added to a new sequence. All other
+    lines (including blanks and comments) will be part of the main sequence.
+
+    Usage:
+        split_music("1\n1") == ["1\n1"]
+        split_music("1\n/2\n1") == ["1\n1", "2"]
+        split_music("1\n/2\n/3\n1\n/2") == ["1\n1 ", "2\n2", "3"]
+
+    """
+    sequences = [[]]
+    sequence_number = 0
+    for line in music.splitlines():
+        if line.strip().startswith("/"):
+            sequence_number += 1
+            _, _, line = line.partition("/")
+        else:
+            sequence_number = 0
+        while not len(sequences) > sequence_number:
+            sequences.append([])
+        sequences[sequence_number].append(line)
+    for i, sequence in enumerate(sequences):
+        sequences[i] = "\n".join(sequence)
+    return sequences
 
 def notes_to_sine(notes, frequencies, *, line_length=1):
     """Converts notes into sine waves
