@@ -17,6 +17,9 @@ Sound generators:
 Sound effects:
     fade
     scale
+    cut
+    pad
+    exact
 
 Music functions:
     split_music
@@ -180,6 +183,28 @@ def scale(scale, iterator, /):
     """Multiplies each point by scale"""
     for num in iterator:
         yield num * scale
+
+def cut(seconds, sound, /):
+    """Ends the sound after the specified time"""
+    for _ in range(int(seconds * RATE)):
+        yield next(sound)
+
+def pad(seconds, sound, /):
+    """Pads the sound with silence if shorter than the specified time"""
+    points = 0
+    while True:
+        try:
+            yield next(sound)
+        except StopIteration:
+            break
+        else:
+            points += 1
+    if points < int(seconds * RATE):
+        yield from silence(seconds=seconds - points/RATE)
+
+def exact(seconds, sound, /):
+    """Cuts or pads the sound to make it exactly the specified time"""
+    return (yield from cut(pad(seconds, sound)))
 
 
 # - Utility for audio sources
