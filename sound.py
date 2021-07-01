@@ -66,9 +66,8 @@ An even longer example:
         ctx.voice_client,
         s.IteratorSource(s.chunk(
             s.scale(2, s._layer(
-                s.music_to_notes(music),
+                s.music_to_notes(music, line_length=1.15),
                 lambda name, length: s.piano(indices[name] + 1),
-                line_length=1.15,
             ))
         )),
     )
@@ -299,7 +298,7 @@ def make_indices_dict(names=NOTE_NAMES, *, a4=57, offset=0):
 
 # - Utilities for converting music to notes to sounds
 
-def music_to_notes(music, /):
+def music_to_notes(music, *, line_length=1):
     """Converts music into notes (two tuples of note name and length)
 
     This function returns a list of two-tuples of a string/None and a float.
@@ -308,10 +307,11 @@ def music_to_notes(music, /):
 
     Note that there is a break between notes by default.
 
-    A music string is first divided into lines with one line being length 1.
-    Each line is then split by whitespace into parts with the length divided
-    evenly between them. Each part is then split by commas "," into notes with
-    the length again divided evenly between them.
+    A music string is first divided into lines with one line being the
+    specified length, defaulting to 1. Each line is then split by whitespace
+    into parts with the length divided evenly between them. Each part is then
+    split by commas "," into notes with the length again divided evenly between
+    them.
 
     Empty lines or lines starting with a hash "#" are skipped.
 
@@ -327,7 +327,6 @@ def music_to_notes(music, /):
             continue
         if line.startswith("#"):
             continue
-        line_length = 1
         parts = line.split()
         for part in parts:
             part_length = line_length / len(parts)
