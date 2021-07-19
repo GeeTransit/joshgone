@@ -62,6 +62,14 @@ set NAME=value
 export NAME=value
 ```
 
+## More Setup
+
+Create or update the database to the newest format by entering the virtual environment and running:
+
+```sh
+yoyo apply
+```
+
 ## Usage
 
 Enter the virtual environment and run:
