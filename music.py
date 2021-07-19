@@ -286,7 +286,6 @@ class Music(commands.Cog):
             'noplaylist': None,
             'playlistend': None,
             "extract_flat": True,
-            "forcejson": True,
         })
         data = await asyncio.to_thread(ytdl.extract_info, url, download=False)
         if 'entries' not in data:
