@@ -321,6 +321,9 @@ def chunk(iterator, /):
     If the iterator doesn't complete on a chunk border, null bytes will be
     added until it reaches the required length, which should be 3840 bytes.
 
+    Note that floats not in the range [-1, 1) will be silently truncated to
+    fall inside the range.
+
     """
     volume = 1<<15 - 1  # 16-bit
     rate = 48000  # 48kHz
@@ -333,8 +336,10 @@ def chunk(iterator, /):
             left, right = num
         else:
             left = right = num
-        current += int(volume * left).to_bytes(2, "little", signed=True)
-        current += int(volume * right).to_bytes(2, "little", signed=True)
+        left = max(~volume, min(volume, int(volume * left)))
+        right = max(~volume, min(volume, int(volume * right)))
+        current += left.to_bytes(2, "little", signed=True)
+        current += right.to_bytes(2, "little", signed=True)
         if len(current) >= size:
             yield bytes(current)
             current.clear()
