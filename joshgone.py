@@ -28,6 +28,8 @@ async def _init_repl():
     global thread
     if thread is not None:
         return
+    if not os.environ.get("JOSHGONE_REPL"):
+        return
     variables = globals()
     loop = asyncio_main.loop = asyncio.get_running_loop()
     asyncio_main.console = asyncio_main.AsyncIOInteractiveConsole(variables, loop)
