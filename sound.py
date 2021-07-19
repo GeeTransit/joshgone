@@ -81,6 +81,7 @@ MUSIC_DIGITIZED, provided for testing purposes.
 """
 import asyncio
 import math
+import json
 import discord
 
 
@@ -136,6 +137,38 @@ def piano(index=A4_INDEX, *, seconds=1):
         yield int.from_bytes(piano_data[i:i+2], "little", signed=True) / (1<<16-1)
     if seconds > 1:
         yield from silence(seconds=seconds-1)
+
+
+# - Experimental sounds from Online Sequencer
+
+_onlinesequencer_data = {}
+_onlinesequencer_settings = None
+
+def _init_onlinesequencer_sound(instrument):
+    assert type(instrument) is int
+    if instrument in _onlinesequencer_data:
+        return
+    with open(f"{instrument}.raw", mode="rb") as file:
+        _onlinesequencer_data[instrument] = file.read()
+
+def _init_onlinesequencer_settings():
+    global _onlinesequencer_settings
+    if _onlinesequencer_settings is not None:
+        return
+    with open("onlinesequencer_settings.json") as file:
+        _onlinesequencer_settings = json.load(file)
+
+def _onlinesequencer_sound(instrument, index=A4_INDEX):
+    index -= 2*12  # All instruments start at C2
+    seconds_per_beat = 60 / (_onlinesequencer_settings["originalBpm"][instrument] * 2)
+    data = _onlinesequencer_data[instrument]
+    min_ = _onlinesequencer_settings["min"][instrument]
+    max_ = _onlinesequencer_settings["max"][instrument]
+    if not min_ <= index <= max_:
+        return
+    index -= min_
+    for i in range(int(index*seconds_per_beat * RATE)*2, int((index+1)*seconds_per_beat * RATE)*2, 2):
+        yield int.from_bytes(data[i:i+2], "little", signed=True) / (1<<16-1)
 
 
 # - Sound effects
