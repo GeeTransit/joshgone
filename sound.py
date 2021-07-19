@@ -146,6 +146,84 @@ def piano(index=A4_INDEX, *, seconds=1):
 
 # - Experimental sounds from Online Sequencer
 
+class _OSInstrument:
+    """An instrument wrapping a collection of sounds
+
+    These sounds are taken from Online Sequencer. The audio is from links of
+    the form `https://onlinesequencer.net/app/instruments/{i}.ogg?v=12` with
+    `{i}` being replaced with the instrument number. The settings are from
+    `https://onlinesequencer.net/resources/c/85dda66875c37703d44f50da0bb85185.js`.
+
+    The raw audio files were generated using FFmpeg using a command of the form
+    `ffmpeg -i {i}.ogg -f s16le -acodec pcm_s16le -ac 1 -ar 48000 {i}.raw` with
+    `{i}` being replaced with the instrument number. The raw files are 48 kHz
+    signed 16-bit little endian mono audio.
+
+    Online Sequencer's lowest note index (0) represents a C2, which would be 24
+    according to make_indices_dict. All note indices are offset accordingly.
+
+    """
+    _SETTINGS_FILENAME = "onlinesequencer_settings.json"
+    _INSTRUMENT_FILENAME = "./_ossounds/{i}.raw"
+    _INDEX_OFFSET = 2 * 12
+
+    _settings = None
+    _data = {}
+
+    def __init__(self, instrument):
+        """Creates an instrument
+
+        If the instrument is a string, it is looked up and converted into an
+        instrument number.
+
+        """
+        # Load settings and data
+        self.load_settings()
+        if type(instrument) is str:
+            instrument = self._settings["instruments"].index(instrument)
+        self.load_data(instrument)
+        # Store them on the instrument
+        self.instrument = instrument
+        self.instrument_name = self._settings["instruments"][instrument]
+        self.data = self._data[instrument]
+        self.min = self._settings["min"][instrument] + self._INDEX_OFFSET
+        self.max = self._settings["max"][instrument] + self._INDEX_OFFSET
+        self.original_bpm = self._settings["originalBpm"][instrument] * 2
+        self.seconds = 60 / self.original_bpm
+
+    def at(self, index=A4_INDEX):
+        """Returns a sound for this instrument at the specified note index"""
+        if not self.min <= index <= self.max:
+            return
+        RATE = 48000  # 48 kHz
+        HIGHEST = 1 << 16-1  # signed 16 bit little endian
+        start = (index - self.min) * self.seconds
+        for x in passed(self.seconds):
+            i = int((start + x) * RATE + 0.5) * 2
+            yield int.from_bytes(
+                self.data[i:i+2],
+                "little",
+                signed=True,
+            ) / HIGHEST
+
+    @classmethod
+    def load_settings(cls, *, force=False):
+        if not force and cls._settings is not None:
+            return False
+        with open(cls._SETTINGS_FILENAME) as file:
+            cls._settings = json.load(file)
+        return True
+
+    @classmethod
+    def load_data(cls, instrument, *, force=False):
+        assert type(instrument) is int
+        if not force and cls._data.get(instrument, None) is not None:
+            return False
+        filename = cls._INSTRUMENT_FILENAME.replace("{i}", str(instrument))
+        with open(filename) as file:
+            cls._data[instrument] = file.read()
+        return True
+
 _onlinesequencer_data = {}
 _onlinesequencer_settings = None
 
