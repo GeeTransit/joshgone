@@ -1,1 +1,0 @@
-@venv python joshgone.py
