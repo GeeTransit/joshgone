@@ -14,6 +14,9 @@ Sound generators:
     silence
     piano  (requires init_piano to be called)
 
+Sound creation utilities:
+    passed
+
 Sound effects:
     fade
     volume
@@ -82,6 +85,7 @@ MUSIC_DIGITIZED, provided for testing purposes.
 import asyncio
 import math
 import json
+import itertools
 import discord
 
 
@@ -97,13 +101,13 @@ NOTE_NAMES = "c c# d d# e f f# g g# a a# b".split()
 
 def silence(*, seconds=1):
     """Returns 0 for the specified amount of time"""
-    for _ in range(int(seconds * RATE)):
+    for _ in passed(seconds):
         yield 0
 
 def sine(freq=A4_FREQUENCY, *, seconds=1):
     """Returns a sine wave at freq for the specified amount of time"""
-    for x in range(int(seconds * RATE)):
-        yield math.sin(2*math.pi * freq * (x/RATE))
+    for x in passed(seconds):
+        yield math.sin(2*math.pi * freq * x)
 sine_wave = sine  # Old name
 
 piano_data = None
@@ -133,7 +137,8 @@ def piano(index=A4_INDEX, *, seconds=1):
 
     """
     index -= 2*12  # The piano starts at C2
-    for i in range(index * RATE*2, int((index+min(seconds, 1)) * RATE*2), 2):
+    for x in passed(min(seconds, 1)):
+        i = int((index + x) * RATE + 0.5) * 2
         yield int.from_bytes(piano_data[i:i+2], "little", signed=True) / (1<<16-1)
     if seconds > 1:
         yield from silence(seconds=seconds-1)
@@ -169,6 +174,24 @@ def _onlinesequencer_sound(instrument, index=A4_INDEX):
     index -= min_
     for i in range(int(index*seconds_per_beat * RATE)*2, int((index+1)*seconds_per_beat * RATE)*2, 2):
         yield int.from_bytes(data[i:i+2], "little", signed=True) / (1<<16-1)
+
+
+# - Sound creation utilities
+
+def passed(seconds=1):
+    """Returns a sound lasting the specified time yielding the seconds passed
+
+    This abstracts away the use of RATE to calculate the number of points.
+
+    If seconds is None, the retured sound will be unbounded.
+
+    """
+    if seconds is None:
+        iterator = itertools.count()
+    else:
+        iterator = range(int(seconds * RATE))
+    for i in iterator:
+        yield i / RATE
 
 
 # - Sound effects
