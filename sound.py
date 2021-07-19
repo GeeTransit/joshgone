@@ -110,6 +110,21 @@ def sine(freq=A4_FREQUENCY, *, seconds=1):
         yield math.sin(2*math.pi * freq * x)
 sine_wave = sine  # Old name
 
+def square(freq=A4_FREQUENCY, *, seconds=1):
+    """Returns a square wave at freq for the specified amount of time"""
+    for x in passed(seconds):
+        yield (freq*x % 1 > 0.5) * 2 - 1
+
+def sawtooth(freq=A4_FREQUENCY, *, seconds=1):
+    """Returns a sawtooth wave at freq for the specified amount of time"""
+    for x in passed(seconds):
+        yield ((freq*x + 0.5) % 1 - 0.5) * 2
+
+def triangle(freq=A4_FREQUENCY, *, seconds=1):
+    """Returns a triangle wave at freq for the specified amount of time"""
+    for x in passed(seconds):
+        yield (-abs(-((freq*x + freq/2)%1) + 0.5) + 0.25) * 4
+
 piano_data = None
 def init_piano():
     """Loads the piano sound for use
