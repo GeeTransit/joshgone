@@ -30,6 +30,12 @@ Music functions:
     notes_to_sine
     _layer  (unfinalized API)
 
+Audio source utilities:
+    chunk
+    unchunk
+    IteratorSource
+    source_to_iterator
+
 A very simple example: (Note that ctx is a discord.Context)
 
     import sound as s
@@ -441,6 +447,32 @@ def chunk(iterator, /):
             current += b"\x00\x00\x00\x00"
         yield bytes(current)
 
+def source_to_iterator(source, /):
+    """Converts an audio source into a stream of bytes
+
+    This basically does the opposite of IteratorSource. See that class's
+    documentation for more info.
+
+    """
+    try:
+        while chunk := source.read():
+            yield chunk
+    finally:
+        source.cleanup()
+
+def unchunk(chunks, /):
+    """Converts a stream of bytes to two-tuples of floats in [-1, 1)
+
+    This basically does the opposite of chunk. See that function's
+    documentation for more info.
+
+    """
+    volume = 1<<15 - 1  # 16-bit
+    for chunk in chunks:
+        for i in range(0, len(chunk) - len(chunk)%4, 4):
+            left = int.from_bytes(chunk[i:i+2], "little", signed=True)
+            right = int.from_bytes(chunk[i+2:i+4], "little", signed=True)
+            yield left/volume, right/volume
 
 # - Utility for note names and the like
 
