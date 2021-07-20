@@ -241,7 +241,7 @@ class _OSInstrument:
         if not force and cls._data.get(instrument, None) is not None:
             return False
         filename = cls._INSTRUMENT_FILENAME.replace("{i}", str(instrument))
-        with open(filename) as file:
+        with open(filename, mode="rb") as file:
             cls._data[instrument] = file.read()
         return True
 
