@@ -419,7 +419,7 @@ class _OSInstrumentFFmpeg:
         # Get filename from template if one wasn't provided
         if filename is None:
             filename = self._INSTRUMENT_FILENAME
-        filename = template.replace("<>", str(instrument))
+        filename = filename.replace("<>", str(instrument))
         # FFmpeg options
         self.filename = filename
         self.before_options = before_options
