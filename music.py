@@ -13,6 +13,8 @@ from discord.ext import tasks
 
 import youtube_dl
 
+import patched_player
+
 @dataclasses.dataclass
 class Song:
     ty: str
@@ -232,7 +234,7 @@ class Music(commands.Cog):
             # take first item from a playlist
             data = data['entries'][0]
         filename = data['url'] if stream else ytdl.prepare_filename(data)
-        audio = discord.FFmpegPCMAudio(filename, **self.ffmpeg_opts)
+        audio = patched_player.FFmpegPCMAudio(filename, **self.ffmpeg_opts)
         player = discord.PCMVolumeTransformer(audio)
         return player, data
 
