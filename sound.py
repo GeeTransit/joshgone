@@ -93,6 +93,7 @@ import math
 import json
 import itertools
 import discord
+import patched_player
 
 
 # - Constants
@@ -244,6 +245,94 @@ class _OSInstrument:
         with open(filename, mode="rb") as file:
             cls._data[instrument] = file.read()
         return True
+
+# - Experimental OS instrument with no FFmpeg preprocessing
+
+class _OSInstrumentFFmpeg:
+    """An instrument wrapping a collection of sounds
+
+    These sounds are taken from Online Sequencer. More info can be found in
+    the _OSInstrument class.
+
+    Note that no FFmpeg preprocessing is needed; all reencoding is done at
+    runtime. However, you can still specify a raw PCM file. Just also pass
+    the relevant FFmpeg options specifying the format, sample rate, and number
+    of channels. For 48 kHz signed 16-bit little endian mono audio, you'd pass
+    `before_options="-f s16le -ar 48000 -ac 1"`.
+
+    """
+    _SETTINGS_FILENAME = "onlinesequencer_settings.json"
+    _INSTRUMENT_FILENAME = "./_ossounds/<>.ogg"
+    _INDEX_OFFSET = 2 * 12
+
+    _settings = None
+
+    def __init__(
+        self,
+        instrument,
+        * ,
+        filename=None,
+        before_options=None,
+        options=None,
+    ):
+        """Create an instrument
+
+        The filename can optionally have a pair of angle brackets `<>` which
+        will be replaced by the instrument number.
+
+        The before_options and options arguments are passed to the constructor
+        of patched_player.FFmpegPCMAudio. Note that they will be prefixed by
+        `"-ss {start_time}"` for before_options and `"-t {self.seconds}"` for
+        options.
+
+        """
+        # Load settings and data
+        self.load_settings()
+        if type(instrument) is str:
+            instrument = self._settings["instruments"].index(instrument)
+        # Store them on the instrument
+        self.instrument = instrument
+        self.instrument_name = self._settings["instruments"][instrument]
+        self.min = self._settings["min"][instrument] + self._INDEX_OFFSET
+        self.max = self._settings["max"][instrument] + self._INDEX_OFFSET
+        self.original_bpm = self._settings["originalBpm"][instrument] * 2
+        self.seconds = 60 / self.original_bpm
+        # Get filename from template if one wasn't provided
+        if filename is None:
+            filename = self._INSTRUMENT_FILENAME
+        filename = template.replace("<>", str(instrument))
+        # FFmpeg options
+        self.filename = filename
+        self.before_options = before_options
+        self.options = options
+
+    def at(self, index=A4_INDEX):
+        """Returns a sound for this instrument at the specified note index"""
+        # If the index is out of range, return an empty sound (no points)
+        if not self.min <= index <= self.max:
+            return
+        # Get the starting time of this note
+        start = (index - self.min) * self.seconds
+        # Unchunk and convert into a sound
+        yield from ((x+y)/2 for x, y in unchunk(self._iterator_at(start)))
+
+    def _iterator_at(self, start):
+        # Use FFmpeg to decode the source
+        yield from source_to_iterator(patched_player.FFmpegPCMAudio(
+            self.filename,
+            before_options=f"-ss {start} {self.before_options or ''}",
+            options=f"-t {self.seconds} {self.options or ''}",
+        ))
+
+    @classmethod
+    def load_settings(cls, *, force=False):
+        if not force and cls._settings is not None:
+            return False
+        with open(cls._SETTINGS_FILENAME) as file:
+            cls._settings = json.load(file)
+        return True
+
+# - Experimental OS sound functions
 
 _onlinesequencer_data = {}
 _onlinesequencer_settings = None
