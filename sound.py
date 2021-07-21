@@ -92,6 +92,7 @@ import asyncio
 import math
 import json
 import itertools
+import functools
 import discord
 import patched_player
 
@@ -245,6 +246,124 @@ class _OSInstrument:
         with open(filename, mode="rb") as file:
             cls._data[instrument] = file.read()
         return True
+
+# - LRU cache for iterators
+
+def lru_iter_cache(func=None, *, maxsize=128):
+    """Decorator to wrap a function returning iterables
+
+    If maxsize is 0, no caching will be done. If maxsize is None, the cache
+    will be unbounded.
+
+    See functools.lru_cache for more info.
+
+    """
+    if func is None:
+        return functools.partial(lru_iter_cache, maxsize=maxsize)
+
+    self = None  # It will be reassigned to the function
+
+    # Wrap the original function
+    @functools.wraps(func)
+    def _lru_iter_cache_wrapper(*args, **kwargs):
+        # The key must not be the same for different call args / kwargs.
+        # Example: f("a", 1) vs f(a=1).
+        key = (args, *kwargs.items())
+
+        # If the key ain't in the cache...
+        if key not in self.results:
+            # Note down that we missed it
+            self.misses += 1
+            # Get the iterator from calling the function
+            iterator = iter(func(*args, **kwargs))
+            # Update cache with the iterator
+            self.iterators[key] = iterator
+            self.results[key] = []
+            # Ensure the cache's size isn't over self.maxsize
+            if (
+                self.maxsize is not None  # Cache is not unbounded
+                and len(self.results) > max(0, self.maxsize)
+            ):
+                # Fast path for maxsize of 0 (clear everything)
+                if self.maxsize == 0:
+                    self.results.clear()
+                    self.iterators.clear()
+                else:
+                    # Get old keys in the cache (order is kept in a dict)
+                    old_keys = list(itertools.islice(
+                        iter(self.results.keys()),
+                        len(self.results) - self.maxsize,
+                    ))
+                    # Remove old keys
+                    for old_key in old_keys:
+                        self.results.pop(old_key)
+                        self.iterators.pop(old_key, None)
+                    # Force a resizing of the dictionaries (resize on inserts)
+                    self.results[1] = 1
+                    del self.results[1]
+                    self.iterators[1] = 1
+                    del self.iterators[1]
+            # If the info we just removed was ours...
+            if key not in self.iterators:
+                # Yield from the iterator directly (not in the cache)
+                yield from iterator
+                return
+
+        # If the key is in the cache...
+        else:
+            # Note down that we hit it
+            self.hits += 1
+            # Move key to the end of the dict (LRU cache)
+            result = self.results.pop(key)
+            self.results[key] = result
+            # If there is no ongoing iterator...
+            if key not in self.iterators:
+                # Yield from the result directly (iterator already ended)
+                yield from result
+                return
+
+        # The iterator is in the cache and it's still being stepped through.
+        iterator = self.iterators[key]
+        result = self.results[key]
+        # Use itertools.count because we don't know how long the iterator is.
+        for index in itertools.count():
+            # If the next value hasn't been added yet...
+            if not index < len(result):
+                assert index == len(result)  # Quick sanity check on the index
+                try:
+                    # Try getting the next value
+                    value = next(iterator)
+                except StopIteration:
+                    # The iterator has ended. Remove it from the iterator dict.
+                    # Note that this depends on the fact that calling
+                    # next(iterator) after an iterator has ended always raises
+                    # StopIteration.
+                    self.iterators.pop(key, None)
+                    break
+                else:
+                    # Update the cache with the new value
+                    result.append(value)
+            # Yield the next value
+            yield result[index]
+
+    # Assign self to the function itself
+    self = _lru_iter_cache_wrapper
+
+    # Set cache state
+    self.maxsize = maxsize
+    self.hits = 0
+    self.misses = 0
+    self.iterators = {}
+    self.results = {}
+
+    # A helper function to clear the cache
+    def _lru_iter_cache_clear():
+        self.results.clear()
+        self.iterators.clear()
+    self.cache_clear = _lru_iter_cache_clear
+
+    # Return the wrapper function
+    return _lru_iter_cache_wrapper
 
 # - Experimental OS instrument with no FFmpeg preprocessing
 
