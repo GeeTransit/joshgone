@@ -451,6 +451,31 @@ class _OSInstrumentFFmpeg:
             cls._settings = json.load(file)
         return True
 
+# - Cached OS instrument with no FFmpeg preprocessing
+
+class _OSInstrumentFFmpegCached(_OSInstrumentFFmpeg):
+    """An instrument wrapping a cached collection of sounds
+
+    Note that we cache the binary data, not the floats, as this reduces
+    memory usage (at the cost of some more CPU usage).
+
+    See _OSInstrumentFFmpeg for more info.
+
+    """
+    def __init__(self, instrument, * , max_cache_size=128, **kwargs):
+        """Creates an instrument with the specified cache size
+
+        See _OSInstrumentFFmpeg.__init__ for more info.
+
+        """
+        super().__init__(instrument, **kwargs)
+        # Create a cached function around _iterator_at
+        decorator = lru_iter_cache(maxsize=max_cache_size)
+        self._iterator_at = decorator(self._iterator_at)
+
+    def cache_clear(self):
+        self._iterator_at.cache_clear()
+
 # - Experimental OS sound functions
 
 _onlinesequencer_data = {}
