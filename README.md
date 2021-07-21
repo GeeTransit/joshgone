@@ -71,6 +71,12 @@ Create or update the database to the newest format by entering the virtual envir
 yoyo apply
 ```
 
+For playing music to work, you need to have [FFmpeg](http://ffmpeg.org/) on your PATH environment variable. Verify by running:
+
+```sh
+ffmpeg -version
+```
+
 ## Usage
 
 Enter the virtual environment and run:
