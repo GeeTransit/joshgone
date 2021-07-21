@@ -630,9 +630,11 @@ class IteratorSource(discord.AudioSource):
 
     def cleanup(self):
         try:
-            self._iterator.close()
+            close = self._iterator.close
         except AttributeError:
             pass
+        else:
+            close()
         self._iterator = None
 
     def read(self):
@@ -691,7 +693,12 @@ def source_to_iterator(source, /):
         while chunk := source.read():
             yield chunk
     finally:
-        source.cleanup()
+        try:
+            cleanup = source.cleanup
+        except AttributeError:
+            pass
+        else:
+            cleanup()
 
 def unchunk(chunks, /):
     """Converts a stream of bytes to two-tuples of floats in [-1, 1)
