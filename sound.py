@@ -11,6 +11,9 @@ More info on that can be found in the music_to_notes's docstring.
 
 Sound generators:
     sine
+    square
+    sawtooth
+    triangle
     silence
     piano  (requires init_piano to be called)
 
@@ -33,6 +36,8 @@ Music functions:
 Audio source utilities:
     chunk
     unchunk
+
+discord.py utilities:
     iterator_to_source
     source_to_iterator
 
@@ -45,7 +50,7 @@ A very simple example: (Note that ctx is a discord.Context)
     import sound as s
     await s.play_source(
         ctx.voice_client,
-        s.IteratorSource(s.chunk(s.sine(440, seconds=1))),
+        s.iterator_to_source(s.chunk(s.sine(440, seconds=1))),
     )
 
 A longer example:
@@ -59,7 +64,7 @@ A longer example:
 
     await s.play_source(
         ctx.voice_client,
-        s.IteratorSource(s.chunk(itertools.chain.from_iterable(
+        s.iterator_to_source(s.chunk(itertools.chain.from_iterable(
             s.sine(frequencies[indices[note]], seconds=0.5)
             for note in notes
         ))),
@@ -70,7 +75,8 @@ An even longer example:
     import sound as s
     s.init_piano()
 
-    indices = s.make_indices_dict("do di re ri mi fa fi so si la li ti".split())
+    names = "do di re ri mi fa fi so si la li ti".split()
+    indices = s.make_indices_dict(names)
     music = '''
         . mi mi mi
         fa do . do
@@ -80,7 +86,7 @@ An even longer example:
 
     await s.play_source(
         ctx.voice_client,
-        s.IteratorSource(s.chunk(
+        s.iterator_to_source(s.chunk(
             s.scale(2, s._layer(
                 s.music_to_notes(music, line_length=1.15),
                 lambda name, length: s.piano(indices[name] + 1),
@@ -524,7 +530,7 @@ class _OSInstrumentFFmpeg:
         `["-t", str(self.seconds)]` for options.
 
         """
-        # Load settings and data
+        # Load settings
         self.load_settings()
         if type(instrument) is str:
             instrument = self._settings["instruments"].index(instrument)
@@ -618,7 +624,7 @@ class _OSInstrumentFFmpegCached(_OSInstrumentFFmpeg):
     """An instrument wrapping a cached collection of sounds
 
     Note that we cache the binary data, not the floats, as this reduces
-    memory usage (at the cost of some more CPU usage).
+    memory usage by a lot (at the cost of some more CPU usage).
 
     See _OSInstrumentFFmpeg for more info.
 
@@ -626,9 +632,10 @@ class _OSInstrumentFFmpegCached(_OSInstrumentFFmpeg):
     def __init__(self, instrument, * , max_cache_size=128, **kwargs):
         """Creates an instrument with the specified cache size
 
-        See _OSInstrumentFFmpeg.__init__ for more info on the instrument.
+        See _OSInstrumentFFmpeg.__init__ for more info on the instrument and
+        other keyword arguments.
 
-        See LRUIterableCache for more info on caching.
+        See LRUIterableCache for more info on max_cache_size and on caching.
 
         """
         super().__init__(instrument, **kwargs)
