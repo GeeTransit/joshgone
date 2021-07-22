@@ -848,7 +848,7 @@ def iterator_to_source(iterator, /, *, is_opus=False):
 
     """
     if not has_discord:
-        raise RuntiemError("discord.py needed to make discord.AudioSources")
+        raise RuntimeError("discord.py needed to make discord.AudioSources")
     return IteratorSource(iterator, is_opus)
 
 def chunk(iterator, /):
