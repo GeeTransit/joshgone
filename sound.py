@@ -880,16 +880,17 @@ def chunk(iterator, /):
     chunks_per_second = 1000//20  # 20ms
     points_per_chunk = rate//chunks_per_second
     size = points_per_chunk * 2 * 2  # 16-bit stereo
+    int_to_bytes = int.to_bytes  # speedup by removing a getattr
     current = bytearray()
     for num in iterator:
         if type(num) is tuple:
             left, right = num
         else:
             left = right = num
-        current += left.to_bytes(2, "little", signed=True)
-        current += right.to_bytes(2, "little", signed=True)
         left = max(low, min(high, int(volume * left)))
         right = max(low, min(high, int(volume * right)))
+        current += int_to_bytes(left, 2, "little", signed=True)
+        current += int_to_bytes(right, 2, "little", signed=True)
         if len(current) >= size:
             yield bytes(current)
             current.clear()
@@ -924,10 +925,11 @@ def unchunk(chunks, /):
 
     """
     volume = 1 << (16-1)  # 16-bit signed
+    int_from_bytes = int.from_bytes  # speedup by removing a getattr
     for chunk in chunks:
         for i in range(0, len(chunk) - len(chunk)%4, 4):
-            left = int.from_bytes(chunk[i:i+2], "little", signed=True)
-            right = int.from_bytes(chunk[i+2:i+4], "little", signed=True)
+            left = int_from_bytes(chunk[i:i+2], "little", signed=True)
+            right = int_from_bytes(chunk[i+2:i+4], "little", signed=True)
             yield left/volume, right/volume
 
 # - Utility for note names and the like
