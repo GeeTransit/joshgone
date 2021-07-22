@@ -329,7 +329,9 @@ class LRUIterableCache:
         return self._wrap_iterator(key)
 
     def clear(self):
-        """Clears the cache"""
+        """Clears the cache and the hits / misses counters"""
+        self.hits = 0
+        self.misses = 0
         self.results.clear()
         self.iterators.clear()
 
