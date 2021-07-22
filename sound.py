@@ -464,6 +464,11 @@ class _OSInstrumentFFmpeg:
     These sounds are taken from Online Sequencer. More info can be found in
     the _OSInstrument class.
 
+    Sounds are cached on a per instrument basis with the note index as the key.
+    You can pass your own cache if necessary. Note that we cache the binary
+    data, not the floats, as this reduces memory usage by a lot (at the cost of
+    some more CPU usage).
+
     Note that no FFmpeg preprocessing is needed; all reencoding is done at
     runtime. However, you can still specify a raw PCM file. Just also pass
     the relevant FFmpeg options specifying the format, sample rate, and number
@@ -484,6 +489,8 @@ class _OSInstrumentFFmpeg:
         filename=None,
         before_options=None,
         options=None,
+        cache=None,
+        max_cache_size=128,
     ):
         """Create an instrument
 
@@ -494,6 +501,9 @@ class _OSInstrumentFFmpeg:
         .ffmpeg_args_for method's return value. Note that they will be prefixed
         by `["-ss", str(start_time)]` for before_options and
         `["-t", str(self.seconds)]` for options.
+
+        For the sound cache, you can directly pass an LRUIterableCache to the
+        cache keyword argument. Passing max_cache_size is deprecated.
 
         """
         # Load settings
@@ -515,22 +525,10 @@ class _OSInstrumentFFmpeg:
         self.filename = filename
         self.before_options = before_options
         self.options = options
-
-    def at(self, index=A4_INDEX):
-        """Returns a sound for this instrument at the specified note index"""
-        # Get the starting time of this note
-        start = self.start_of(index)
-        # If the index is out of range, return an empty sound (no points)
-        if start is None:
-            return
-        # Get FFmpeg arguments
-        args = self.ffmpeg_args_for(start)
-        # Create the process
-        process = process_from_ffmpeg_args(*args)
-        # Create an iterator from the process
-        iterator = iterator_from_process(process)
-        # Unchunk and convert into a sound
-        yield from ((x+y)/2 for x, y in unchunk(iterator))
+        # Create the cache for source iterators
+        if cache is None:
+            cache = LRUIterableCache(maxsize=max_cache_size)
+        self.cache = cache
 
     def start_of(self, index=A4_INDEX):
         """Returns the start time for the specified note"""
@@ -584,30 +582,6 @@ class _OSInstrumentFFmpeg:
             cls._settings = json.load(file)
         return True
 
-# - Cached OS instrument with no FFmpeg preprocessing
-
-class _OSInstrumentFFmpegCached(_OSInstrumentFFmpeg):
-    """An instrument wrapping a cached collection of sounds
-
-    Note that we cache the binary data, not the floats, as this reduces
-    memory usage by a lot (at the cost of some more CPU usage).
-
-    See _OSInstrumentFFmpeg for more info.
-
-    """
-    def __init__(self, instrument, * , max_cache_size=128, **kwargs):
-        """Creates an instrument with the specified cache size
-
-        See _OSInstrumentFFmpeg.__init__ for more info on the instrument and
-        other keyword arguments.
-
-        See LRUIterableCache for more info on max_cache_size and on caching.
-
-        """
-        super().__init__(instrument, **kwargs)
-        # Create the cache for source iterators
-        self.cache = LRUIterableCache(maxsize=max_cache_size)
-
     def at(self, index=A4_INDEX):
         """Returns a sound at the specified note index
 
@@ -640,6 +614,9 @@ class _OSInstrumentFFmpegCached(_OSInstrumentFFmpeg):
 
         """
         self.cache.clear()
+
+# Caching is now part of _OSInstrumentFFmpeg
+_OSInstrumentFFmpegCached = _OSInstrumentFFmpeg
 
 # - Experimental OS sound functions
 
