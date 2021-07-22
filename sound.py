@@ -874,7 +874,8 @@ def chunk(iterator, /):
     fall inside the range.
 
     """
-    volume = 1<<15 - 1  # 16-bit
+    volume = 1 << (16-1)  # 16-bit signed
+    high, low = volume-1, -volume  # allowed range
     rate = 48000  # 48kHz
     chunks_per_second = 1000//20  # 20ms
     points_per_chunk = rate//chunks_per_second
@@ -885,10 +886,10 @@ def chunk(iterator, /):
             left, right = num
         else:
             left = right = num
-        left = max(~volume, min(volume, int(volume * left)))
-        right = max(~volume, min(volume, int(volume * right)))
         current += left.to_bytes(2, "little", signed=True)
         current += right.to_bytes(2, "little", signed=True)
+        left = max(low, min(high, int(volume * left)))
+        right = max(low, min(high, int(volume * right)))
         if len(current) >= size:
             yield bytes(current)
             current.clear()
@@ -922,7 +923,7 @@ def unchunk(chunks, /):
     documentation for more info.
 
     """
-    volume = 1<<15 - 1  # 16-bit
+    volume = 1 << (16-1)  # 16-bit signed
     for chunk in chunks:
         for i in range(0, len(chunk) - len(chunk)%4, 4):
             left = int.from_bytes(chunk[i:i+2], "little", signed=True)
