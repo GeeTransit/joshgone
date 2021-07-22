@@ -447,16 +447,15 @@ def process_from_ffmpeg_args(
     you can specify the executable argument to the executable's location.
 
     For the pipe_* arguments, if it is True, subprocess.PIPE will be passed to
-    subprocess.Popen's constructor. Otherwise, subprocess.DEVNULL will be
-    passed.
+    subprocess.Popen's constructor. Otherwise, None will be passed.
 
     All other keyword arguments, are passed directly to subprocess.Popen.
 
     """
     subprocess_kwargs = {
-        "stdin": subprocess.PIPE if pipe_stdin else subprocess.DEVNULL,
-        "stdout": subprocess.PIPE if pipe_stdout else subprocess.DEVNULL,
-        "stderr": subprocess.PIPE if pipe_stderr else subprocess.DEVNULL,
+        "stdin": subprocess.PIPE if pipe_stdin else None,
+        "stdout": subprocess.PIPE if pipe_stdout else None,
+        "stderr": subprocess.PIPE if pipe_stderr else None,
     }
     subprocess_kwargs.update(kwargs)
     return subprocess.Popen([executable, *args], **subprocess_kwargs)
