@@ -193,57 +193,144 @@ class _OSInstrument:
     `{i}` being replaced with the instrument number. The settings are from
     `https://onlinesequencer.net/resources/c/85dda66875c37703d44f50da0bb85185.js`.
 
-    The raw audio files were generated using FFmpeg using a command of the form
-    `ffmpeg -i {i}.ogg -f s16le -acodec pcm_s16le -ac 1 -ar 48000 {i}.raw` with
-    `{i}` being replaced with the instrument number. The raw files are 48 kHz
-    signed 16-bit little endian mono audio.
-
     Online Sequencer's lowest note index (0) represents a C2, which would be 24
     according to make_indices_dict. All note indices are offset accordingly.
 
+    Sounds are cached on a per instrument basis with the instrument instance
+    and note index as the key. You can pass your own cache if necessary. Note
+    that we cache the binary data, not the floats, as this reduces memory usage
+    by a lot (at the cost of some more CPU usage).
+
+    Note that no FFmpeg preprocessing is needed; all reencoding is done at
+    runtime. However, you can still specify a raw PCM file. Just also pass
+    the relevant FFmpeg options specifying the format, sample rate, and number
+    of channels. For 48 kHz signed 16-bit little endian mono audio, you'd pass
+    `before_options="-f s16le -ar 48000 -ac 1"`.
+
     """
     _SETTINGS_FILENAME = "onlinesequencer_settings.json"
-    _INSTRUMENT_FILENAME = "./_ossounds/{i}.raw"
+    _INSTRUMENT_FILENAME = "./_ossounds/<>.ogg"
     _INDEX_OFFSET = 2 * 12
 
     _settings = None
-    _data = {}
 
-    def __init__(self, instrument):
-        """Creates an instrument
+    def __init__(
+        self,
+        instrument,
+        *,
+        filename=None,
+        before_options=None,
+        options=None,
+        cache=None,
+        max_cache_size=128,
+    ):
+        """Create an instrument
 
         If the instrument is a string, it is looked up and converted into an
         instrument number.
 
+        The filename can optionally have a pair of angle brackets `<>` which
+        will be replaced by the instrument number.
+
+        The before_options and options arguments are included in the
+        .ffmpeg_args_for method's return value. Note that they will be prefixed
+        by `["-ss", str(start_time)]` for before_options and
+        `["-t", str(self.seconds)]` for options.
+
+        For the sound cache, you can directly pass an LRUIterableCache to the
+        cache keyword argument. Passing max_cache_size is deprecated.
+
         """
-        # Load settings and data
+        # Load settings
         self.load_settings()
         if type(instrument) is str:
             instrument = self._settings["instruments"].index(instrument)
-        self.load_data(instrument)
         # Store them on the instrument
         self.instrument = instrument
         self.instrument_name = self._settings["instruments"][instrument]
-        self.data = self._data[instrument]
         self.min = self._settings["min"][instrument] + self._INDEX_OFFSET
         self.max = self._settings["max"][instrument] + self._INDEX_OFFSET
         self.original_bpm = self._settings["originalBpm"][instrument] * 2
         self.seconds = 60 / self.original_bpm
+        # Get filename from template if one wasn't provided
+        if filename is None:
+            filename = self._INSTRUMENT_FILENAME
+        filename = filename.replace("<>", str(instrument))
+        filename = filename.replace("{i}", str(instrument))  # Old template
+        # FFmpeg options
+        self.filename = filename
+        self.before_options = before_options
+        self.options = options
+        # Create the cache for source iterators
+        if cache is None:
+            cache = LRUIterableCache(maxsize=max_cache_size)
+        self.cache = cache
+
+    # Simple hash (we compare instruments by identity)
+    def __hash__(self):
+        return hash(id(self))
 
     def at(self, index=A4_INDEX):
-        """Returns a sound for this instrument at the specified note index"""
+        """Returns a sound at the specified note index
+
+        Note that the source iterable may be cached. Thus, if the file changes,
+        the returned sounds may not be updated. Use .cache_clear() to refresh
+        the cache.
+
+        """
+        # If the index is out of range, return an empty sound (no points)
+        start = self.start_of(index)
+        if start is None:
+            return ()
+        # Check the cache before getting the sound
+        key = (self, index)
+        iterator = self.cache.get(key, lambda: self._iterator_at(start))
+        # Unchunk and convert into a sound
+        yield from ((x+y)/2 for x, y in unchunk(iterator))
+
+    def start_of(self, index=A4_INDEX):
+        """Returns the start time for the specified note"""
+        # If the index is out of range, return None
         if not self.min <= index <= self.max:
-            return
-        RATE = 48000  # 48 kHz
-        HIGHEST = 1 << 16-1  # signed 16 bit little endian
-        start = (index - self.min) * self.seconds
-        for x in passed(self.seconds):
-            i = int((start + x) * RATE + 0.5) * 2
-            yield int.from_bytes(
-                self.data[i:i+2],
-                "little",
-                signed=True,
-            ) / HIGHEST
+            return None
+        # Return the starting place otherwise
+        return (index - self.min) * self.seconds
+
+    def ffmpeg_args_for(self, start, *, before_options=None, options=None):
+        """Returns a list of arguments to FFmpeg
+
+        It will take the required amount of audio starting from the specified
+        start time and convert them into PCM 16-bit stereo audio to be piped to
+        stdout.
+
+        The instance's .before_options will be added before the before_options
+        argument and likewise with .options.
+
+        """
+        if start is None:
+            raise ValueError("start must be a float")
+        if (
+            isinstance(self.before_options, str)
+            or isinstance(self.options, str)
+            or isinstance(before_options, str)
+            or isinstance(options, str)
+        ):
+            # Strings are naughty. Force user to split them beforehand
+            raise ValueError("FFmpeg options should be lists, not strings")
+        return [
+            "-ss", str(start),
+            *(self.before_options or ()),
+            *(before_options or ()),
+            "-i", self.filename,
+            "-f", "s16le",
+            "-ar", "48000",
+            "-ac", "2",
+            "-loglevel", "warning",
+            "-t", str(self.seconds),
+            *(self.options or ()),
+            *(options or ()),
+            "pipe:1",
+        ]
 
     @classmethod
     def load_settings(cls, *, force=False):
@@ -253,15 +340,27 @@ class _OSInstrument:
             cls._settings = json.load(file)
         return True
 
-    @classmethod
-    def load_data(cls, instrument, *, force=False):
-        assert type(instrument) is int
-        if not force and cls._data.get(instrument, None) is not None:
-            return False
-        filename = cls._INSTRUMENT_FILENAME.replace("{i}", str(instrument))
-        with open(filename, mode="rb") as file:
-            cls._data[instrument] = file.read()
-        return True
+    def _iterator_at(self, start):
+        # Get FFmpeg arguments
+        args = self.ffmpeg_args_for(start)
+        # Create the process
+        process = process_from_ffmpeg_args(*args)
+        # Create an iterator from the process
+        return iterator_from_process(process)
+
+    def cache_clear(self):
+        """Clears the source iterables cache
+
+        Same as doing .cache.clear().
+
+        """
+        self.cache.clear()
+
+# FFmpeg is now part of _OSInstrument
+_OSInstrumentFFmpeg = _OSInstrument
+
+# Caching is now part of _OSInstrumentFFmpeg
+_OSInstrumentFFmpegCached = _OSInstrumentFFmpeg
 
 # - LRU cache for iterators
 
@@ -455,173 +554,6 @@ def iterator_from_process(process):
         process.kill()
         if process.poll() is None:
             process.communicate()
-
-# - Experimental OS instrument with no FFmpeg preprocessing
-
-class _OSInstrumentFFmpeg:
-    """An instrument wrapping a collection of sounds
-
-    These sounds are taken from Online Sequencer. More info can be found in
-    the _OSInstrument class.
-
-    Sounds are cached on a per instrument basis with the instrument instance
-    and note index as the key. You can pass your own cache if necessary. Note
-    that we cache the binary data, not the floats, as this reduces memory usage
-    by a lot (at the cost of some more CPU usage).
-
-    Note that no FFmpeg preprocessing is needed; all reencoding is done at
-    runtime. However, you can still specify a raw PCM file. Just also pass
-    the relevant FFmpeg options specifying the format, sample rate, and number
-    of channels. For 48 kHz signed 16-bit little endian mono audio, you'd pass
-    `before_options="-f s16le -ar 48000 -ac 1"`.
-
-    """
-    _SETTINGS_FILENAME = "onlinesequencer_settings.json"
-    _INSTRUMENT_FILENAME = "./_ossounds/<>.ogg"
-    _INDEX_OFFSET = 2 * 12
-
-    _settings = None
-
-    def __init__(
-        self,
-        instrument,
-        *,
-        filename=None,
-        before_options=None,
-        options=None,
-        cache=None,
-        max_cache_size=128,
-    ):
-        """Create an instrument
-
-        The filename can optionally have a pair of angle brackets `<>` which
-        will be replaced by the instrument number.
-
-        The before_options and options arguments are included in the
-        .ffmpeg_args_for method's return value. Note that they will be prefixed
-        by `["-ss", str(start_time)]` for before_options and
-        `["-t", str(self.seconds)]` for options.
-
-        For the sound cache, you can directly pass an LRUIterableCache to the
-        cache keyword argument. Passing max_cache_size is deprecated.
-
-        """
-        # Load settings
-        self.load_settings()
-        if type(instrument) is str:
-            instrument = self._settings["instruments"].index(instrument)
-        # Store them on the instrument
-        self.instrument = instrument
-        self.instrument_name = self._settings["instruments"][instrument]
-        self.min = self._settings["min"][instrument] + self._INDEX_OFFSET
-        self.max = self._settings["max"][instrument] + self._INDEX_OFFSET
-        self.original_bpm = self._settings["originalBpm"][instrument] * 2
-        self.seconds = 60 / self.original_bpm
-        # Get filename from template if one wasn't provided
-        if filename is None:
-            filename = self._INSTRUMENT_FILENAME
-        filename = filename.replace("<>", str(instrument))
-        # FFmpeg options
-        self.filename = filename
-        self.before_options = before_options
-        self.options = options
-        # Create the cache for source iterators
-        if cache is None:
-            cache = LRUIterableCache(maxsize=max_cache_size)
-        self.cache = cache
-
-    # Simple hash (we compare instruments by identity)
-    def __hash__(self):
-        return hash(id(self))
-
-    def start_of(self, index=A4_INDEX):
-        """Returns the start time for the specified note"""
-        # If the index is out of range, return None
-        if not self.min <= index <= self.max:
-            return None
-        # Return the starting place otherwise
-        return (index - self.min) * self.seconds
-
-    def ffmpeg_args_for(self, start, *, before_options=None, options=None):
-        """Returns a list of arguments to FFmpeg
-
-        It will take the required amount of audio starting from the specified
-        start time and convert them into PCM 16-bit stereo audio to be piped to
-        stdout.
-
-        The instance's .before_options will be added before the before_options
-        argument and likewise with .options.
-
-        """
-        if start is None:
-            raise ValueError("start must be a float")
-        if (
-            isinstance(self.before_options, str)
-            or isinstance(self.options, str)
-            or isinstance(before_options, str)
-            or isinstance(options, str)
-        ):
-            # Strings are naughty. Force user to split them beforehand
-            raise ValueError("FFmpeg options should be lists, not strings")
-        return [
-            "-ss", str(start),
-            *(self.before_options or ()),
-            *(before_options or ()),
-            "-i", self.filename,
-            "-f", "s16le",
-            "-ar", "48000",
-            "-ac", "2",
-            "-loglevel", "warning",
-            "-t", str(self.seconds),
-            *(self.options or ()),
-            *(options or ()),
-            "pipe:1",
-        ]
-
-    @classmethod
-    def load_settings(cls, *, force=False):
-        if not force and cls._settings is not None:
-            return False
-        with open(cls._SETTINGS_FILENAME) as file:
-            cls._settings = json.load(file)
-        return True
-
-    def at(self, index=A4_INDEX):
-        """Returns a sound at the specified note index
-
-        Note that the source iterable may be cached. Thus, if the file changes,
-        the returned sounds may not be updated. Use .cache_clear() to refresh
-        the cache.
-
-        """
-        # If the index is out of range, return an empty sound (no points)
-        start = self.start_of(index)
-        if start is None:
-            return ()
-        # Check the cache before getting the sound
-        key = (self, index)
-        iterator = self.cache.get(key, lambda: self._iterator_at(start))
-        # Unchunk and convert into a sound
-        yield from ((x+y)/2 for x, y in unchunk(iterator))
-
-    def _iterator_at(self, start):
-        # Get FFmpeg arguments
-        args = self.ffmpeg_args_for(start)
-        # Create the process
-        process = process_from_ffmpeg_args(*args)
-        # Create an iterator from the process
-        return iterator_from_process(process)
-
-    def cache_clear(self):
-        """Clears the source iterables cache
-
-        Same as doing .cache.clear().
-
-        """
-        self.cache.clear()
-
-# Caching is now part of _OSInstrumentFFmpeg
-_OSInstrumentFFmpegCached = _OSInstrumentFFmpeg
 
 # - Experimental OS sound functions
 
