@@ -464,10 +464,10 @@ class _OSInstrumentFFmpeg:
     These sounds are taken from Online Sequencer. More info can be found in
     the _OSInstrument class.
 
-    Sounds are cached on a per instrument basis with the note index as the key.
-    You can pass your own cache if necessary. Note that we cache the binary
-    data, not the floats, as this reduces memory usage by a lot (at the cost of
-    some more CPU usage).
+    Sounds are cached on a per instrument basis with the instrument instance
+    and note index as the key. You can pass your own cache if necessary. Note
+    that we cache the binary data, not the floats, as this reduces memory usage
+    by a lot (at the cost of some more CPU usage).
 
     Note that no FFmpeg preprocessing is needed; all reencoding is done at
     runtime. However, you can still specify a raw PCM file. Just also pass
@@ -529,6 +529,10 @@ class _OSInstrumentFFmpeg:
         if cache is None:
             cache = LRUIterableCache(maxsize=max_cache_size)
         self.cache = cache
+
+    # Simple hash (we compare instruments by identity)
+    def __hash__(self):
+        return hash(id(self))
 
     def start_of(self, index=A4_INDEX):
         """Returns the start time for the specified note"""
@@ -595,7 +599,8 @@ class _OSInstrumentFFmpeg:
         if start is None:
             return ()
         # Check the cache before getting the sound
-        iterator = self.cache.get(index, lambda: self._iterator_at(start))
+        key = (self, index)
+        iterator = self.cache.get(key, lambda: self._iterator_at(start))
         # Unchunk and convert into a sound
         yield from ((x+y)/2 for x, y in unchunk(iterator))
 
