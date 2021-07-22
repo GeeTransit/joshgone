@@ -33,7 +33,7 @@ Music functions:
 Audio source utilities:
     chunk
     unchunk
-    IteratorSource
+    iterator_to_source
     source_to_iterator
 
 A very simple example: (Note that ctx is a discord.Context)
@@ -93,9 +93,14 @@ import math
 import json
 import itertools
 import functools
-import discord
 import patched_player
 
+try:
+    import discord
+except ImportError:
+    has_discord = False
+else:
+    has_discord = True
 
 # - Constants
 
@@ -612,36 +617,52 @@ async def play_source(voice_client, source):
     await future
     return future.result()
 
-class IteratorSource(discord.AudioSource):
+if has_discord:
+    # Make our class a subclass of discord.py AudioSource if possible
+    class IteratorSource(discord.AudioSource):
+        """Internal subclass of discord's AudioSource for iterators
+
+        See iterator_to_source for more info.
+
+        """
+        def __init__(self, iterator, *, is_opus=False):
+            self._iterator = iterator
+            self._is_opus = is_opus
+
+        def is_opus(self):
+            return self._is_opus
+
+        def cleanup(self):
+            try:
+                close = self._iterator.close
+            except AttributeError:
+                pass
+            else:
+                close()
+            self._iterator = None
+
+        def read(self):
+            try:
+                return next(self._iterator)
+            except StopIteration:
+                return b""
+
+def iterator_to_source(iterator, /, *, is_opus=False):
     """Wraps an iterator of bytes into an audio source
 
+    If is_opus is False (the default), the iterator must yield 20ms of signed
+    16-bit little endian stereo 48kHz audio each iteration. If is_opus is True,
+    the iterator should yield 20ms of Opus encoded audio each iteration.
+
     Usage:
-        # returns an audio source implementing discord.AudioSource
-        source = s.IteratorSource(s.chunk(s.sine(440, seconds=1)))
+        # returns an audio source implementing AudioSource
+        source = s.iterator_to_source(s.chunk(s.sine(440, seconds=1)))
         ctx.voice_client.play(source, after=lambda _: print("finished"))
 
     """
-    def __init__(self, iterator, *, is_opus=False):
-        self._iterator = iterator
-        self._is_opus = is_opus
-
-    def is_opus(self):
-        return self._is_opus
-
-    def cleanup(self):
-        try:
-            close = self._iterator.close
-        except AttributeError:
-            pass
-        else:
-            close()
-        self._iterator = None
-
-    def read(self):
-        try:
-            return next(self._iterator)
-        except StopIteration:
-            return b""
+    if not has_discord:
+        raise RuntiemError("discord.py needed to make discord.AudioSources")
+    return IteratorSource(iterator, is_opus)
 
 def chunk(iterator, /):
     """Converts a stream of floats or two-tuples of floats in [-1, 1) to bytes
@@ -685,7 +706,7 @@ def chunk(iterator, /):
 def source_to_iterator(source, /):
     """Converts an audio source into a stream of bytes
 
-    This basically does the opposite of IteratorSource. See that class's
+    This basically does the opposite of iterator_to_source. See that function's
     documentation for more info.
 
     """
