@@ -98,7 +98,6 @@ import json
 import itertools
 import functools
 import subprocess
-import patched_player
 
 try:
     import discord
@@ -519,10 +518,10 @@ class _OSInstrumentFFmpeg:
         The filename can optionally have a pair of angle brackets `<>` which
         will be replaced by the instrument number.
 
-        The before_options and options arguments are passed to the constructor
-        of patched_player.FFmpegPCMAudio. Note that they will be prefixed by
-        `"-ss {start_time}"` for before_options and `"-t {self.seconds}"` for
-        options.
+        The before_options and options arguments are included in the
+        .ffmpeg_args_for method's return value. Note that they will be prefixed
+        by `["-ss", str(start_time)]` for before_options and
+        `["-t", str(self.seconds)]` for options.
 
         """
         # Load settings and data
@@ -547,21 +546,63 @@ class _OSInstrumentFFmpeg:
 
     def at(self, index=A4_INDEX):
         """Returns a sound for this instrument at the specified note index"""
-        # If the index is out of range, return an empty sound (no points)
-        if not self.min <= index <= self.max:
-            return
         # Get the starting time of this note
-        start = (index - self.min) * self.seconds
+        start = self.start_of(index)
+        # If the index is out of range, return an empty sound (no points)
+        if start is None:
+            return
+        # Get FFmpeg arguments
+        args = self.ffmpeg_args_for(start)
+        # Create the process
+        process = process_from_ffmpeg_args(*args)
+        # Create an iterator from the process
+        iterator = iterator_from_process(process)
         # Unchunk and convert into a sound
-        yield from ((x+y)/2 for x, y in unchunk(self._iterator_at(start)))
+        yield from ((x+y)/2 for x, y in unchunk(iterator))
 
-    def _iterator_at(self, start):
-        # Use FFmpeg to decode the source
-        yield from source_to_iterator(patched_player.FFmpegPCMAudio(
-            self.filename,
-            before_options=f"-ss {start} {self.before_options or ''}",
-            options=f"-t {self.seconds} {self.options or ''}",
-        ))
+    def start_of(self, index=A4_INDEX):
+        """Returns the start time for the specified note"""
+        # If the index is out of range, return None
+        if not self.min <= index <= self.max:
+            return None
+        # Return the starting place otherwise
+        return (index - self.min) * self.seconds
+
+    def ffmpeg_args_for(self, start, *, before_options=None, options=None):
+        """Returns a list of arguments to FFmpeg
+
+        It will take the required amount of audio starting from the specified
+        start time and convert them into PCM 16-bit stereo audio to be piped to
+        stdout.
+
+        The instance's .before_options will be added before the before_options
+        argument and likewise with .options.
+
+        """
+        if start is None:
+            raise ValueError("start must be a float")
+        if (
+            isinstance(self.before_options, str)
+            or isinstance(self.options, str)
+            or isinstance(before_options, str)
+            or isinstance(options, str)
+        ):
+            # Strings are naughty. Force user to split them beforehand
+            raise ValueError("FFmpeg options should be lists, not strings")
+        return [
+            "-ss", str(start),
+            *(self.before_options or ()),
+            *(before_options or ()),
+            "-i", self.filename,
+            "-f", "s16le",
+            "-ar", "48000",
+            "-ac", "2",
+            "-loglevel", "warning",
+            "-t", str(self.seconds),
+            *(self.options or ()),
+            *(options or ()),
+            "pipe:1",
+        ]
 
     @classmethod
     def load_settings(cls, *, force=False):
@@ -585,16 +626,47 @@ class _OSInstrumentFFmpegCached(_OSInstrumentFFmpeg):
     def __init__(self, instrument, * , max_cache_size=128, **kwargs):
         """Creates an instrument with the specified cache size
 
-        See _OSInstrumentFFmpeg.__init__ for more info.
+        See _OSInstrumentFFmpeg.__init__ for more info on the instrument.
+
+        See LRUIterableCache for more info on caching.
 
         """
         super().__init__(instrument, **kwargs)
-        # Create a cached function around _iterator_at
-        decorator = lru_iter_cache(maxsize=max_cache_size)
-        self._iterator_at = decorator(self._iterator_at)
+        # Create the cache for source iterators
+        self.cache = LRUIterableCache(maxsize=max_cache_size)
+
+    def at(self, index=A4_INDEX):
+        """Returns a sound at the specified note index
+
+        Note that the source iterable may be cached. Thus, if the file changes,
+        the returned sounds may not be updated. Use .cache_clear() to refresh
+        the cache.
+
+        """
+        # If the index is out of range, return an empty sound (no points)
+        start = self.start_of(index)
+        if start is None:
+            return ()
+        # Check the cache before getting the sound
+        iterator = self.cache.get(index, lambda: self._iterator_at(start))
+        # Unchunk and convert into a sound
+        yield from ((x+y)/2 for x, y in unchunk(iterator))
+
+    def _iterator_at(self, start):
+        # Get FFmpeg arguments
+        args = self.ffmpeg_args_for(start)
+        # Create the process
+        process = process_from_ffmpeg_args(*args)
+        # Create an iterator from the process
+        return iterator_from_process(process)
 
     def cache_clear(self):
-        self._iterator_at.cache_clear()
+        """Clears the source iterables cache
+
+        Same as doing .cache.clear().
+
+        """
+        self.cache.clear()
 
 # - Experimental OS sound functions
 
