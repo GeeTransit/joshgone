@@ -36,6 +36,10 @@ Audio source utilities:
     iterator_to_source
     source_to_iterator
 
+FFmpeg utilities:
+    process_from_ffmpeg_args
+    iterator_from_process
+
 A very simple example: (Note that ctx is a discord.Context)
 
     import sound as s
@@ -93,6 +97,7 @@ import math
 import json
 import itertools
 import functools
+import subprocess
 import patched_player
 
 try:
@@ -369,6 +374,61 @@ def lru_iter_cache(func=None, *, maxsize=128):
 
     # Return the wrapper function
     return _lru_iter_cache_wrapper
+
+# - FFmpeg utilities
+
+def process_from_ffmpeg_args(
+    *args,
+    executable="ffmpeg",
+    pipe_stdin=False,
+    pipe_stdout=True,
+    pipe_stderr=False,
+    **kwargs,
+):
+    """Creates a process that run FFmpeg with the given arguments
+
+    This assumes that ffmpeg.exe is on your PATH environment variable. If not,
+    you can specify the executable argument to the executable's location.
+
+    For the pipe_* arguments, if it is True, subprocess.PIPE will be passed to
+    subprocess.Popen's constructor. Otherwise, subprocess.DEVNULL will be
+    passed.
+
+    All other keyword arguments, are passed directly to subprocess.Popen.
+
+    """
+    subprocess_kwargs = {
+        "stdin": subprocess.PIPE if pipe_stdin else subprocess.DEVNULL,
+        "stdout": subprocess.PIPE if pipe_stdout else subprocess.DEVNULL,
+        "stderr": subprocess.PIPE if pipe_stderr else subprocess.DEVNULL,
+    }
+    subprocess_kwargs.update(kwargs)
+    return subprocess.Popen([executable, *args], **subprocess_kwargs)
+
+def iterator_from_process(process):
+    """Returns an iterator of chunks from the given process
+
+    This function is hardcoded to take PCM 16-bit stereo audio.
+
+    """
+    SAMPLING_RATE = 48000  # 48kHz
+    CHANNELS = 2  # stereo
+    SAMPLE_WIDTH = 2 * 8  # 16-bit
+    FRAME_LENGTH = 20  # 20ms
+
+    SAMPLE_SIZE = SAMPLE_WIDTH * CHANNELS
+    SAMPLES_PER_FRAME = round(SAMPLING_RATE * FRAME_LENGTH / 1000)
+    FRAME_SIZE = SAMPLES_PER_FRAME * SAMPLE_SIZE
+
+    try:
+        read = process.stdout.read
+        while data := read(FRAME_SIZE):
+            yield data
+
+    finally:
+        process.kill()
+        if process.poll() is None:
+            process.communicate()
 
 # - Experimental OS instrument with no FFmpeg preprocessing
 
