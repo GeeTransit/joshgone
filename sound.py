@@ -104,6 +104,7 @@ import json
 import itertools
 import functools
 import subprocess
+import copy
 
 try:
     import discord
@@ -289,9 +290,9 @@ class LRUIterableCache:
     attributes. You can reset them to 0 manually if you'd like.
 
     Checking and modifying the cache manually isn't recommended, but they are
-    available through the .iterators and .results attributes. The former stores
-    ongoing iterators (ones that haven't ended) and the latter holds a list of
-    the yielded values. You can clear them manually if you'd like.
+    available through the .tees attribute. It stores a dictionary between keys
+    and tees, the latter of which is what gets passed to copy.copy to generate
+    new iterators. You can clear them manually if you'd like.
 
     """
     def __init__(self, *, maxsize=128):
@@ -299,8 +300,7 @@ class LRUIterableCache:
         self.maxsize = maxsize
         self.hits = 0
         self.misses = 0
-        self.iterators = {}  # Stores the running iterator
-        self.results = {}  # Stores the list of yielded values
+        self.results = {}  # Stores the original tees
 
     def get(self, key, iterable_func):
         """Return an iterator for this key, calling iterable_func if needed"""
@@ -309,31 +309,22 @@ class LRUIterableCache:
             # Get the iterator from calling the function
             iterator = iter(iterable_func())
             # Update cache with the iterator
-            self._miss(key, iterator)
+            result = self._miss(key, iterator)
             # Ensure the cache's size isn't over self.maxsize
             self._ensure_size()
-            # If the keys we just removed was ours...
-            if key not in self.iterators:
-                # Yield from the iterator directly (not in the cache)
-                return iter(iterator)
 
         # If the key is in the cache...
         else:
             result = self._hit(key)
-            # If there is no ongoing iterator...
-            if key not in self.iterators:
-                # Yield from the result directly (iterator already ended)
-                return iter(result)
 
-        # The iterator is in the cache and it's still being stepped through.
-        return self._wrap_iterator(key)
+        # Return a copy of the tee in self.results
+        return result
 
     def clear(self):
         """Clears the cache and the hits / misses counters"""
         self.hits = 0
         self.misses = 0
         self.results.clear()
-        self.iterators.clear()
 
     def __repr__(self):
         maxsize = self.maxsize
@@ -345,9 +336,9 @@ class LRUIterableCache:
         # Note down that we missed it
         self.misses += 1
         # Update cache with the iterator
-        self.iterators[key] = iterator
-        self.results[key] = []
-        return iterator
+        result = self.results[key] = itertools.tee(iterator, 1)[0]
+        # Return a copy of the tee
+        return copy.copy(result)
 
     def _hit(self, key):
         # Note down that we hit it
@@ -355,7 +346,8 @@ class LRUIterableCache:
         # Move key to the end of the dict (LRU cache)
         result = self.results.pop(key)
         self.results[key] = result
-        return result
+        # Return a copy of the tee
+        return copy.copy(result)
 
     def _ensure_size(self):
         if self.maxsize is None:  # Cache is not unbounded
@@ -365,7 +357,6 @@ class LRUIterableCache:
         # Fast path for maxsize of 0 (clear everything)
         if self.maxsize == 0:
             self.results.clear()
-            self.iterators.clear()
             return True
         # Get old keys in the cache (order is kept in a dict)
         old_keys = list(itertools.islice(
@@ -375,37 +366,10 @@ class LRUIterableCache:
         # Remove old keys
         for old_key in old_keys:
             self.results.pop(old_key)
-            self.iterators.pop(old_key, None)
         # Force a resizing of the dictionaries (resize on inserts)
         self.results[1] = 1
         del self.results[1]
-        self.iterators[1] = 1
-        del self.iterators[1]
         return True
-
-    def _wrap_iterator(self, key):
-        iterator = self.iterators[key]
-        result = self.results[key]
-        # Use itertools.count because we don't know how long the iterator is.
-        for index in itertools.count():
-            # If the next value hasn't been added yet...
-            if not index < len(result):
-                assert index == len(result)  # Quick sanity check on the index
-                try:
-                    # Try getting the next value
-                    value = next(iterator)
-                except StopIteration:
-                    # The iterator has ended. Remove it from the iterator dict.
-                    # Note that this depends on the fact that calling
-                    # next(iterator) after an iterator has ended always raises
-                    # StopIteration.
-                    self.iterators.pop(key, None)
-                    break
-                else:
-                    # Update the cache with the new value
-                    result.append(value)
-            # Yield the next value
-            yield result[index]
 
 def lru_iter_cache(func=None, *, maxsize=128):
     """Decorator to wrap a function returning iterables
