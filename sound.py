@@ -856,7 +856,7 @@ def iterator_to_source(iterator, /, *, is_opus=False):
     """
     if not has_discord:
         raise RuntimeError("discord.py needed to make discord.AudioSources")
-    return IteratorSource(iterator, is_opus)
+    return IteratorSource(iterator, is_opus=is_opus)
 
 def chunk(iterator, /):
     """Converts a stream of floats or two-tuples of floats in [-1, 1) to bytes
