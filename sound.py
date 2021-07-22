@@ -259,80 +259,124 @@ class _OSInstrument:
 
 # - LRU cache for iterators
 
-def lru_iter_cache(func=None, *, maxsize=128):
-    """Decorator to wrap a function returning iterables
+class LRUIterableCache:
+    """An LRU cache for iterables
 
-    If maxsize is 0, no caching will be done. If maxsize is None, the cache
-    will be unbounded.
+    The maxsize argument specifies the maximum size the cache can grow to.
+    Specifying 0 means that the cache will remain empty. Specifying None means
+    the cache will grow without bound.
 
-    See functools.lru_cache for more info.
+    To get an iterable, call .get with a key (to uniquely identify each
+    iterable, and with a zero-argument function that returns an iterable for
+    when it doesn't exist.
+
+    The resulting iterator can be iterated upon normally. The values returned
+    are stored for future calls. They can also be consumed at different speeds.
+
+    To clear the cache and reset the hits / misses counters, call .clear().
+
+    To change the maxsize, set the .maxsize property to its new value. Note
+    that it won't take effect until the next .get call with a key not in the
+    cache. It is not recommended, but you can call ._ensure_size() to force
+    it to resize the cache.
+
+    For info on the number of hits / misses, check the .hits and .misses
+    attributes. You can reset them to 0 manually if you'd like.
+
+    Checking and modifying the cache manually isn't recommended, but they are
+    available through the .iterators and .results attributes. The former stores
+    ongoing iterators (ones that haven't ended) and the latter holds a list of
+    the yielded values. You can clear them manually if you'd like.
 
     """
-    if func is None:
-        return functools.partial(lru_iter_cache, maxsize=maxsize)
+    def __init__(self, *, maxsize=128):
+        # Set cache state
+        self.maxsize = maxsize
+        self.hits = 0
+        self.misses = 0
+        self.iterators = {}  # Stores the running iterator
+        self.results = {}  # Stores the list of yielded values
 
-    self = None  # It will be reassigned to the function
-
-    # Wrap the original function
-    @functools.wraps(func)
-    def _lru_iter_cache_wrapper(*args, **kwargs):
-        # The key must not be the same for different call args / kwargs.
-        # Example: f("a", 1) vs f(a=1).
-        key = (args, *kwargs.items())
-
+    def get(self, key, iterable_func):
+        """Return an iterator for this key, calling iterable_func if needed"""
         # If the key ain't in the cache...
         if key not in self.results:
-            # Note down that we missed it
-            self.misses += 1
             # Get the iterator from calling the function
-            iterator = iter(func(*args, **kwargs))
+            iterator = iter(iterable_func())
             # Update cache with the iterator
-            self.iterators[key] = iterator
-            self.results[key] = []
+            self._miss(key, iterator)
             # Ensure the cache's size isn't over self.maxsize
-            if (
-                self.maxsize is not None  # Cache is not unbounded
-                and len(self.results) > max(0, self.maxsize)
-            ):
-                # Fast path for maxsize of 0 (clear everything)
-                if self.maxsize == 0:
-                    self.results.clear()
-                    self.iterators.clear()
-                else:
-                    # Get old keys in the cache (order is kept in a dict)
-                    old_keys = list(itertools.islice(
-                        iter(self.results.keys()),
-                        len(self.results) - self.maxsize,
-                    ))
-                    # Remove old keys
-                    for old_key in old_keys:
-                        self.results.pop(old_key)
-                        self.iterators.pop(old_key, None)
-                    # Force a resizing of the dictionaries (resize on inserts)
-                    self.results[1] = 1
-                    del self.results[1]
-                    self.iterators[1] = 1
-                    del self.iterators[1]
-            # If the info we just removed was ours...
+            self._ensure_size()
+            # If the keys we just removed was ours...
             if key not in self.iterators:
                 # Yield from the iterator directly (not in the cache)
-                yield from iterator
-                return
+                return iter(iterator)
 
         # If the key is in the cache...
         else:
-            # Note down that we hit it
-            self.hits += 1
-            # Move key to the end of the dict (LRU cache)
-            result = self.results.pop(key)
-            self.results[key] = result
+            result = self._hit(key)
             # If there is no ongoing iterator...
             if key not in self.iterators:
                 # Yield from the result directly (iterator already ended)
-                yield from result
-                return
+                return iter(result)
 
         # The iterator is in the cache and it's still being stepped through.
+        return self._wrap_iterator(key)
+
+    def clear(self):
+        """Clears the cache"""
+        self.results.clear()
+        self.iterators.clear()
+
+    def __repr__(self):
+        maxsize = self.maxsize
+        hits = self.hits
+        misses = self.misses
+        return f"<{type(self).__name__} {maxsize=} {hits=} {misses=}>"
+
+    def _miss(self, key, iterator):
+        # Note down that we missed it
+        self.misses += 1
+        # Update cache with the iterator
+        self.iterators[key] = iterator
+        self.results[key] = []
+        return iterator
+
+    def _hit(self, key):
+        # Note down that we hit it
+        self.hits += 1
+        # Move key to the end of the dict (LRU cache)
+        result = self.results.pop(key)
+        self.results[key] = result
+        return result
+
+    def _ensure_size(self):
+        if self.maxsize is None:  # Cache is not unbounded
+            return False
+        if len(self.results) <= max(0, self.maxsize):
+            return False
+        # Fast path for maxsize of 0 (clear everything)
+        if self.maxsize == 0:
+            self.results.clear()
+            self.iterators.clear()
+            return True
+        # Get old keys in the cache (order is kept in a dict)
+        old_keys = list(itertools.islice(
+            iter(self.results.keys()),
+            len(self.results) - self.maxsize,
+        ))
+        # Remove old keys
+        for old_key in old_keys:
+            self.results.pop(old_key)
+            self.iterators.pop(old_key, None)
+        # Force a resizing of the dictionaries (resize on inserts)
+        self.results[1] = 1
+        del self.results[1]
+        self.iterators[1] = 1
+        del self.iterators[1]
+        return True
+
+    def _wrap_iterator(self, key):
         iterator = self.iterators[key]
         result = self.results[key]
         # Use itertools.count because we don't know how long the iterator is.
@@ -356,21 +400,33 @@ def lru_iter_cache(func=None, *, maxsize=128):
             # Yield the next value
             yield result[index]
 
-    # Assign self to the function itself
-    self = _lru_iter_cache_wrapper
+def lru_iter_cache(func=None, *, maxsize=128):
+    """Decorator to wrap a function returning iterables
 
-    # Set cache state
-    self.maxsize = maxsize
-    self.hits = 0
-    self.misses = 0
-    self.iterators = {}
-    self.results = {}
+    If maxsize is 0, no caching will be done. If maxsize is None, the cache
+    will be unbounded.
 
-    # A helper function to clear the cache
-    def _lru_iter_cache_clear():
-        self.results.clear()
-        self.iterators.clear()
-    self.cache_clear = _lru_iter_cache_clear
+    See LRUIterableCache for more info.
+
+    """
+    if func is None:
+        return functools.partial(lru_iter_cache, maxsize=maxsize)
+
+    # Create the cache instance
+    cache = LRUIterableCache(maxsize=maxsize)
+
+    # Wrap the original function
+    @functools.wraps(func)
+    def _lru_iter_cache_wrapper(*args, **kwargs):
+        # The key must not be the same for different call args / kwargs.
+        # Example: f("a", 1) vs f(a=1).
+        key = (args, *kwargs.items())
+        iterable_func = lambda: func(*args, **kwargs)
+        return cache.get(key, iterable_func)
+
+    # Add the cache to the function object for later introspection
+    _lru_iter_cache_wrapper.cache = cache
+    _lru_iter_cache_wrapper.cache_clear = cache.clear
 
     # Return the wrapper function
     return _lru_iter_cache_wrapper
