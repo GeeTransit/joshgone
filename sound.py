@@ -443,7 +443,7 @@ def iterator_from_process(process):
     FRAME_LENGTH = 20  # 20ms
 
     SAMPLE_SIZE = SAMPLE_WIDTH * CHANNELS
-    SAMPLES_PER_FRAME = round(SAMPLING_RATE * FRAME_LENGTH / 1000)
+    SAMPLES_PER_FRAME = SAMPLING_RATE * FRAME_LENGTH // 1000
     FRAME_SIZE = SAMPLES_PER_FRAME * SAMPLE_SIZE
 
     try:
@@ -480,7 +480,7 @@ class _OSInstrumentFFmpeg:
     def __init__(
         self,
         instrument,
-        * ,
+        *,
         filename=None,
         before_options=None,
         options=None,
@@ -702,29 +702,38 @@ def fade(iterator, /, *, fadein=0.005, fadeout=0.005):
     """
     fadein = int(fadein * RATE)
     fadeout = int(fadeout * RATE)
+
+    # First get fadein + fadeout samples
     last = []
     try:
         while len(last) < fadein + fadeout:
             last.append(next(iterator))
     except StopIteration as e:
+        # If we ended early, split the fades equally between fadein and fadeout
         split = int(len(last) * fadein / (fadein+fadeout))
-        for i in range(0, split):
+        for i in range(0, split):  # Fade in
             yield last[i] * ((i+1) / split)
-        for i in range(split, len(last)):
+        for i in range(split, len(last)):  # Fade out
             yield last[i] * ((len(last)-i) / (len(last)-split))
         return e.value
+    # Yield the fadeein part
     for i in range(0, fadein):
         yield last[i] * ((i+1) / fadein)
+    # Remove the fadein
     del last[:fadein]
     assert len(last) == fadeout
+    # Loop until the sound ends. We use the last list as a circular buffer with
+    # the insert variable pointing to the next index to be overwritten.
     insert = 0
     try:
         while True:
+            # Yield the oldest point and get the next point
             value = last[insert]
             last[insert] = next(iterator)
             yield value
             insert = (insert + 1) % fadeout
     except StopIteration as e:
+        # Yield the fadeout
         for i, j in enumerate(range(insert - fadeout, insert)):
             yield last[j] * ((fadeout-i) / fadeout)
         return e.value
@@ -958,19 +967,25 @@ def music_to_notes(music, *, line_length=1):
     the break after the note, whereas an exclamation point "!" adds one.
 
     """
+    # Process lines
     processed = []
     for line in music.splitlines():
+        # Skip empty lines and comments
         line = line.strip()
         if line == "":
             continue
         if line.startswith("#"):
             continue
+
+        # Split into notes
         parts = line.split()
         for part in parts:
             part_length = line_length / len(parts)
             notes = part.split(",")
             for note in notes:
                 note_length = part_length / len(notes)
+
+                # Get flags and add to notes list
                 flags = ""
                 if note.endswith("~"):
                     note = note.removesuffix("~")
@@ -979,18 +994,26 @@ def music_to_notes(music, *, line_length=1):
                     note = note.removesuffix("!")
                     flags += "!"
                 processed.append((note, flags, note_length))
+
+    # Generate notes
     notes = []
     last_note = "."
     for i, (note, flags, note_length) in enumerate(processed):
         has_silence = True
+
+        # Check flags for silence
         if i+1 < len(processed) and processed[i+1][0] == "-":
             has_silence = False
         if "~" in flags:
             has_silence = False
         if "!" in flags:
             has_silence = True
+
+        # Get last note if current is a "-"
         if note == "-":
             note = last_note
+
+        # Get length of silence
         silent_length = 0
         if has_silence:
             silent_length = min(0.1, 0.25*note_length)
@@ -998,6 +1021,8 @@ def music_to_notes(music, *, line_length=1):
         if note == ".":
             silent_length += note_length
             note_length = 0
+
+        # Get / update note lengths
         if note_length > 0:
             if len(notes) > 0 and notes[-1][0] == note:
                 notes[-1] = (note, notes[-1][1] + note_length)
@@ -1005,6 +1030,7 @@ def music_to_notes(music, *, line_length=1):
                 notes.append((note, note_length))
         if silent_length > 0:
             notes.append((None, silent_length))
+
         last_note = note
     return notes
 music_to_sounds = music_to_notes  # Old name
