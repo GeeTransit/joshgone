@@ -573,10 +573,11 @@ def chunked_ffmpeg_process(process):
     SAMPLE_SIZE = SAMPLE_WIDTH * CHANNELS
     SAMPLES_PER_FRAME = SAMPLING_RATE * FRAME_LENGTH // 1000
     FRAME_SIZE = SAMPLES_PER_FRAME * SAMPLE_SIZE
+    FRAME_SIZE_BYTES = FRAME_SIZE // 8
 
     try:
         read = process.stdout.read  # speedup by removing a getattr
-        while data := read(FRAME_SIZE):
+        while data := read(FRAME_SIZE_BYTES):
             yield data
 
     finally:
