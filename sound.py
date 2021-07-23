@@ -189,8 +189,8 @@ class _OSInstrument:
     """An instrument wrapping a collection of sounds
 
     These sounds are taken from Online Sequencer. The audio is from links of
-    the form `https://onlinesequencer.net/app/instruments/{i}.ogg?v=12` with
-    `{i}` being replaced with the instrument number. The settings are from
+    the form `https://onlinesequencer.net/app/instruments/<>.ogg?v=12` with
+    `<>` being replaced with the instrument number. The settings are from
     `https://onlinesequencer.net/resources/c/85dda66875c37703d44f50da0bb85185.js`.
 
     Online Sequencer's lowest note index (0) represents a C2, which would be 24
@@ -205,7 +205,9 @@ class _OSInstrument:
     runtime. However, you can still specify a raw PCM file. Just also pass
     the relevant FFmpeg options specifying the format, sample rate, and number
     of channels. For 48 kHz signed 16-bit little endian mono audio, you'd pass
-    `before_options="-f s16le -ar 48000 -ac 1"`.
+    `before_options=["-f", "s16le", "-ar", "48000", "-ac", "1"]`. You may also
+    want to pass `options=["-v", "error"]` to make FFmpeg quieter (it warns you
+    about estimating the duration from the bitrate).
 
     """
     _SETTINGS_FILENAME = "onlinesequencer_settings.json"
