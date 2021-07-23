@@ -34,23 +34,23 @@ Music functions:
     _layer  (unfinalized API)
 
 Audio source utilities:
-    chunk
-    unchunk
+    chunked
+    unchunked
 
 discord.py utilities:
-    iterator_to_source
-    source_to_iterator
+    wrap_discord_source
+    unwrap_discord_source
 
 FFmpeg utilities:
-    process_from_ffmpeg_args
-    iterator_from_process
+    create_ffmpeg_process
+    chunked_ffmpeg_process
 
 A very simple example: (Note that ctx is a discord.Context)
 
     import sound as s
     await s.play_source(
         ctx.voice_client,
-        s.iterator_to_source(s.chunk(s.sine(440, seconds=1))),
+        s.wrap_discord_source(s.chunked(s.sine(440, seconds=1))),
     )
 
 A longer example:
@@ -64,7 +64,7 @@ A longer example:
 
     await s.play_source(
         ctx.voice_client,
-        s.iterator_to_source(s.chunk(itertools.chain.from_iterable(
+        s.wrap_discord_source(s.chunked(itertools.chain.from_iterable(
             s.sine(frequencies[indices[note]], seconds=0.5)
             for note in notes
         ))),
@@ -86,7 +86,7 @@ An even longer example:
 
     await s.play_source(
         ctx.voice_client,
-        s.iterator_to_source(s.chunk(
+        s.wrap_discord_source(s.chunked(
             s.scale(2, s._layer(
                 s.music_to_notes(music, line_length=1.15),
                 lambda name, length: s.piano(indices[name] + 1),
@@ -288,7 +288,7 @@ class _OSInstrument:
         key = (self, index)
         iterator = self.cache.get(key, lambda: self._iterator_at(start))
         # Unchunk and convert into a sound
-        yield from ((x+y)/2 for x, y in unchunk(iterator))
+        yield from ((x+y)/2 for x, y in unchunked(iterator))
 
     def start_of(self, index=A4_INDEX):
         """Returns the start time for the specified note"""
@@ -346,9 +346,9 @@ class _OSInstrument:
         # Get FFmpeg arguments
         args = self.ffmpeg_args_for(start)
         # Create the process
-        process = process_from_ffmpeg_args(*args)
+        process = create_ffmpeg_process(*args)
         # Create an iterator from the process
-        return iterator_from_process(process)
+        return chunked_ffmpeg_process(process)
 
     def cache_clear(self):
         """Clears the source iterables cache
@@ -505,7 +505,7 @@ def lru_iter_cache(func=None, *, maxsize=128):
 
 # - FFmpeg utilities
 
-def process_from_ffmpeg_args(
+def create_ffmpeg_process(
     *args,
     executable="ffmpeg",
     pipe_stdin=False,
@@ -531,8 +531,9 @@ def process_from_ffmpeg_args(
     }
     subprocess_kwargs.update(kwargs)
     return subprocess.Popen([executable, *args], **subprocess_kwargs)
+process_from_ffmpeg_args = create_ffmpeg_process  # Old name
 
-def iterator_from_process(process):
+def chunked_ffmpeg_process(process):
     """Returns an iterator of chunks from the given process
 
     This function is hardcoded to take PCM 16-bit stereo audio.
@@ -556,6 +557,7 @@ def iterator_from_process(process):
         process.kill()
         if process.poll() is None:
             process.communicate()
+iterator_from_process = chunked_ffmpeg_process  # Old name
 
 # - Experimental OS sound functions
 
@@ -655,7 +657,7 @@ def fade(iterator, /, *, fadein=0.005, fadeout=0.005):
         return e.value
 
 def both(iterator, /):
-    """Deprecated. sound.chunk accepts floats"""
+    """Deprecated. sound.chunked accepts floats"""
     for num in iterator:
         yield num, num
 
@@ -707,7 +709,7 @@ if has_discord:
     class IteratorSource(discord.AudioSource):
         """Internal subclass of discord's AudioSource for iterators
 
-        See iterator_to_source for more info.
+        See wrap_discord_source for more info.
 
         """
         def __init__(self, iterator, *, is_opus=False):
@@ -732,7 +734,7 @@ if has_discord:
             except StopIteration:
                 return b""
 
-def iterator_to_source(iterator, /, *, is_opus=False):
+def wrap_discord_source(iterator, /, *, is_opus=False):
     """Wraps an iterator of bytes into an audio source
 
     If is_opus is False (the default), the iterator must yield 20ms of signed
@@ -741,15 +743,16 @@ def iterator_to_source(iterator, /, *, is_opus=False):
 
     Usage:
         # returns an audio source implementing AudioSource
-        source = s.iterator_to_source(s.chunk(s.sine(440, seconds=1)))
+        source = s.wrap_discord_source(s.chunked(s.sine(440, seconds=1)))
         ctx.voice_client.play(source, after=lambda _: print("finished"))
 
     """
     if not has_discord:
         raise RuntimeError("discord.py needed to make discord.AudioSources")
     return IteratorSource(iterator, is_opus=is_opus)
+iterator_to_source = wrap_discord_source  # Old name
 
-def chunk(iterator, /):
+def chunked(iterator, /):
     """Converts a stream of floats or two-tuples of floats in [-1, 1) to bytes
 
     This is hardcoded to return 20ms chunks of signed 16-bit little endian
@@ -789,11 +792,12 @@ def chunk(iterator, /):
         while not len(current) >= size:
             current += b"\x00\x00\x00\x00"
         yield bytes(current)
+chunk = chunked  # Old name
 
-def source_to_iterator(source, /):
+def unwrap_discord_source(source, /):
     """Converts an audio source into a stream of bytes
 
-    This basically does the opposite of iterator_to_source. See that function's
+    This basically does the opposite of wrap_discord_source. See that function's
     documentation for more info.
 
     """
@@ -807,11 +811,12 @@ def source_to_iterator(source, /):
             pass
         else:
             cleanup()
+source_to_iterator = unwrap_discord_source  # Old name
 
-def unchunk(chunks, /):
+def unchunked(chunks, /):
     """Converts a stream of bytes to two-tuples of floats in [-1, 1)
 
-    This basically does the opposite of chunk. See that function's
+    This basically does the opposite of chunked. See that function's
     documentation for more info.
 
     """
@@ -822,6 +827,7 @@ def unchunk(chunks, /):
             left = int_from_bytes(chunk[i:i+2], "little", signed=True)
             right = int_from_bytes(chunk[i+2:i+4], "little", signed=True)
             yield left/volume, right/volume
+unchunk = unchunked  # Old name
 
 # - Utility for note names and the like
 
