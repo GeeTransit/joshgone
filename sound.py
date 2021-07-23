@@ -602,7 +602,9 @@ def _init_onlinesequencer_sound(instrument):
         return
     _onlinesequencer_data[instrument] = _OSInstrument(
         instrument,
-        filename=f"{instrument}.raw",
+        filename=f"<>.raw",
+        before_options="-f s16le -ar 48000 -ac 1".split(),
+        options="-v error".split(),
     )
 
 def _init_onlinesequencer_settings():
