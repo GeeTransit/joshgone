@@ -88,7 +88,7 @@ An even longer example:
     await s.play_discord_source(
         ctx.voice_client,
         s.wrap_discord_source(s.chunked(
-            s.scale(2, s._layer(
+            s.volume(2, s._layer(
                 s.music_to_notes(music, line_length=1.15),
                 lambda name, length: s.piano(indices[name] + 1),
             ))
@@ -125,7 +125,7 @@ NOTE_NAMES = "c c# d d# e f f# g g# a a# b".split()
 # - Sound generators
 
 def silence(*, seconds=1):
-    """Returns 0 for the specified amount of time"""
+    """Returns silence for the specified amount of time"""
     for _ in passed(seconds):
         yield 0
 
@@ -553,7 +553,7 @@ def create_ffmpeg_process(
     """Creates a process that run FFmpeg with the given arguments
 
     This assumes that ffmpeg.exe is on your PATH environment variable. If not,
-    you can specify the executable argument to the executable's location.
+    you can specify its location using the executable argument.
 
     For the pipe_* arguments, if it is True, subprocess.PIPE will be passed to
     subprocess.Popen's constructor. Otherwise, None will be passed.
@@ -573,7 +573,8 @@ process_from_ffmpeg_args = create_ffmpeg_process  # Old name
 def chunked_ffmpeg_process(process):
     """Returns an iterator of chunks from the given process
 
-    This function is hardcoded to take PCM 16-bit stereo audio.
+    This function is hardcoded to take PCM 16-bit stereo audio, same as the
+    chunked function. See that function for more info.
 
     """
     SAMPLING_RATE = 48000  # 48kHz
@@ -651,7 +652,7 @@ def passed(seconds=1):
 def fade(iterator, /, *, fadein=0.005, fadeout=0.005):
     """Fades in and out of the sound
 
-    If the sound is less than fadein+fadeout seconds, the time between fading
+    If the sound is less than fadein + fadeout seconds, the time between fading
     in and fading out is split proportionally.
 
     """
@@ -745,7 +746,7 @@ play_source = play_discord_source  # Old name
 if has_discord:
     # Make our class a subclass of discord.py AudioSource if possible
     class DiscordIteratorSource(discord.AudioSource):
-        """Internal subclass of discord's AudioSource for iterators
+        """Internal subclass of discord.py's AudioSource for iterators
 
         See wrap_discord_source for more info.
 
@@ -804,7 +805,8 @@ def chunked(iterator, /):
     added until it reaches the required length, which should be 3840 bytes.
 
     Note that floats not in the range [-1, 1) will be silently truncated to
-    fall inside the range.
+    fall inside the range. For example, 1.5 will be processed as 1 and -1.5
+    will be processed as -1.
 
     """
     volume = 1 << (16-1)  # 16-bit signed
@@ -874,7 +876,6 @@ def make_frequencies_dict(*, a4=A4_FREQUENCY, offset=0):
     """Makes a dictionary containing frequencies for each note
 
      - a4 is the frequency for the A above middle C
-     - names is a list of note names
      - offset is the number of semitones to offset each note by
 
     """
@@ -887,9 +888,9 @@ def make_frequencies_dict(*, a4=A4_FREQUENCY, offset=0):
     return frequencies
 
 def make_indices_dict(names=NOTE_NAMES, *, a4=57, offset=0):
-    """Makes a dictionary containing indices of common note names
+    """Makes a dictionary containing note indices of common note names
 
-     - a4 is the index for the A above middle C
+     - a4 is the note index for the A above middle C
      - names is a list of note names
      - offset is the number of semitones to offset each note by
 
