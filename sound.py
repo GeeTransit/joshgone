@@ -723,7 +723,7 @@ def pad(seconds, sound, /):
 
 def exact(seconds, sound, /):
     """Cuts or pads the sound to make it exactly the specified time"""
-    return (yield from cut(pad(seconds, sound)))
+    return (yield from cut(seconds, pad(seconds, sound)))
 
 
 # - Utility for audio sources
