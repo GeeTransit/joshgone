@@ -705,16 +705,14 @@ def cut(seconds, sound, /):
 
 def pad(seconds, sound, /):
     """Pads the sound with silence if shorter than the specified time"""
-    points = 0
-    while True:
+    for x in passed(None):
         try:
-            yield next(sound)
+            point = next(sound)
         except StopIteration:
             break
         else:
-            points += 1
-    if points < int(seconds * RATE):
-        yield from silence(seconds=seconds - points/RATE)
+            yield point
+    yield from silence(seconds=seconds - x)
 
 def exact(seconds, sound, /):
     """Cuts or pads the sound to make it exactly the specified time"""
