@@ -479,51 +479,34 @@ class LRUCache:
 
 # - LRU cache for iterators
 
-class LRUIterableCache:
+class LRUIterableCache(LRUCache):
     """An LRU cache for iterables
 
-    The maxsize argument specifies the maximum size the cache can grow to.
-    Specifying 0 means that the cache will remain empty. Specifying None means
-    the cache will grow without bound.
+    This class internally stores itertools.tee objects wrapped around the
+    original values and returns copy.copy(...) of the tees in the cache.
 
-    To get an iterable, call .get with a key (to uniquely identify each
-    iterable, and with a zero-argument function that returns an iterable for
-    when it doesn't exist.
+    We use tee objects for a few reasons:
+        1. They can be iterated at different speeds.
+        2. They are iterators (lazily evaluated).
+        3. They can be copied (major orz for this one).
+        4. They are fast (implemented in C).
 
-    The resulting iterator can be iterated upon normally. The values returned
-    are stored for future calls. They can also be consumed at different speeds.
+    A .get() call first finds a tee object, using the cached tee if one exists,
+    or creating a fresh one using the iterable_func. We then make a copy of the
+    tee to keep the original unchanged.
 
-    To clear the cache and reset the hits / misses counters, call .clear().
-
-    To change the maxsize, set the .maxsize property to its new value. Note
-    that it won't take effect until the next .get call with a key not in the
-    cache. It is not recommended, but you can call ._ensure_size() to force
-    it to resize the cache.
-
-    For info on the number of hits / misses, check the .hits and .misses
-    attributes. You can reset them to 0 manually if you'd like.
-
-    Checking and modifying the cache manually isn't recommended, but they are
-    available through the .results attribute. It stores a dictionary between
-    keys and tees, the latter of which is what gets passed to copy.copy to
-    generate new iterators. You can clear them manually if you'd like.
+    See LRUCache for more info on caching. See itertools.tee for more info on
+    tee objects.
 
     """
-    def __init__(self, *, maxsize=128):
-        # Set cache state
-        self.maxsize = maxsize
-        self.hits = 0
-        self.misses = 0
-        self.results = {}  # Stores the original tees
-
     def get(self, key, iterable_func):
-        """Return an iterator for this key, calling iterable_func if needed"""
+        """Return the iterator for this key, calling iterable_func if needed"""
         # If the key ain't in the cache...
         if key not in self.results:
             # Get the iterator from calling the function
-            iterator = iter(iterable_func())
+            value = itertools.tee(iterable_func(), 1)[0]
             # Update cache with the iterator
-            result = self._miss(key, iterator)
+            result = self._miss(key, value)
             # Ensure the cache's size isn't over self.maxsize
             self._ensure_size()
 
@@ -532,58 +515,7 @@ class LRUIterableCache:
             result = self._hit(key)
 
         # Return a copy of the tee in self.results
-        return result
-
-    def clear(self):
-        """Clears the cache and the hits / misses counters"""
-        self.hits = 0
-        self.misses = 0
-        self.results.clear()
-
-    def __repr__(self):
-        maxsize = self.maxsize
-        hits = self.hits
-        misses = self.misses
-        return f"<{type(self).__name__} {maxsize=} {hits=} {misses=}>"
-
-    def _miss(self, key, iterator):
-        # Note down that we missed it
-        self.misses += 1
-        # Update cache with the iterator
-        result = self.results[key] = itertools.tee(iterator, 1)[0]
-        # Return a copy of the tee
         return copy.copy(result)
-
-    def _hit(self, key):
-        # Note down that we hit it
-        self.hits += 1
-        # Move key to the end of the dict (LRU cache)
-        result = self.results.pop(key)
-        self.results[key] = result
-        # Return a copy of the tee
-        return copy.copy(result)
-
-    def _ensure_size(self):
-        if self.maxsize is None:  # Cache is not unbounded
-            return False
-        if len(self.results) <= max(0, self.maxsize):
-            return False
-        # Fast path for maxsize of 0 (clear everything)
-        if self.maxsize == 0:
-            self.results.clear()
-            return True
-        # Get old keys in the cache (order is kept in a dict)
-        old_keys = list(itertools.islice(
-            iter(self.results.keys()),
-            len(self.results) - self.maxsize,
-        ))
-        # Remove old keys
-        for old_key in old_keys:
-            self.results.pop(old_key)
-        # Force a resizing of the dictionaries (resize on inserts)
-        self.results[1] = 1
-        del self.results[1]
-        return True
 
 def lru_iter_cache(func=None, *, maxsize=128):
     """Decorator to wrap a function returning iterables
