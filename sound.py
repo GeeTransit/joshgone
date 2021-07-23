@@ -391,9 +391,9 @@ class LRUIterableCache:
     attributes. You can reset them to 0 manually if you'd like.
 
     Checking and modifying the cache manually isn't recommended, but they are
-    available through the .tees attribute. It stores a dictionary between keys
-    and tees, the latter of which is what gets passed to copy.copy to generate
-    new iterators. You can clear them manually if you'd like.
+    available through the .results attribute. It stores a dictionary between
+    keys and tees, the latter of which is what gets passed to copy.copy to
+    generate new iterators. You can clear them manually if you'd like.
 
     """
     def __init__(self, *, maxsize=128):
