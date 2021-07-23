@@ -1213,3 +1213,71 @@ ti3 - - - - - - - si3 - - - - - - -
 la3
 -
 '''
+
+# Use split_music to separate top and bottom parts
+MUSIC_DIGITIZED_DUAL = '''
+    # names="do di re ri mi fa fi so si la li ti".split()
+    # line_length=4.36
+    # offset=13
+/   # offset=1
+
+    . mi mi mi fa       do . do .           so mi do re         mi,re - mi
+/   .
+
+    la3 mi mi mi        fa do . do          . so mi do          re mi,re - mi
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    do mi mi mi         fa do . do          . so mi do          re mi,re - mi
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    do mi mi mi         fa do . do          . so mi do          re mi,re - mi
+/   la3 la3 la3 la3     la3 la3 la3 la3     la3 la3 la3 la3     la3 la3 la3 la3
+
+    do mi mi mi         fa do . do          . so mi do          . . . .
+/   la3 la3 la3 la3     la3 la3 la3 la3     la3 la3 la3 la3     la3,do,mi,so la,do5,mi5,so5 la5 .
+
+    do so mi do         re re,mi so mi      do so mi do         re re,mi so re
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    do so mi do         re re,mi so mi      do so mi do         re re,mi so re
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    - do . la3          . la3 do re         so3 do mi do        re do,re - do
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    - do . la3          . la3 do re         so3 do mi do        re do,re - do
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    do la3 - so3        do re,mi - re       . . do so3          re mi re do
+/   .
+
+    . . do so3          fa mi,re - do       - so3 re do         mi so re do
+/   .
+
+    la3 mi mi mi        fa do . do          . so mi do          re mi,re - mi
+/   la3 . la3 .         fa3 . fa3 .         do . do .           so3 . so3 .
+
+    do mi mi mi         fa do . do          . so mi do          re mi,re - mi
+/   la3 . la3 .         fa3 . fa3 .         do . do .           so3 . so3 .
+
+    do mi mi mi         fa do . do          . so mi do          re mi,re - mi
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    do mi mi mi         fa do . do          . so mi do          . . . .
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        la3,do,mi,so la,do5,mi5,so5 la5 .
+
+    do so mi do         re re,mi so mi      do so mi do         re re,mi so re
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    do so mi do         re re,mi so mi      do so mi do         re re,mi so re
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    - do . la3          . la3 do re         so3 do mi do        re do,re - do
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    - do . la3          . la3 do re         so3 do mi do        re do,re - -
+/   la3 la3 la3 fa3     fa3 fa3 fa3 fa3     do do do so3        so3 so3 si3 si3
+
+    do . . .
+/   la3 . . .
+'''
