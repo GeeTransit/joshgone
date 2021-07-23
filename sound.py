@@ -364,6 +364,110 @@ _OSInstrumentFFmpeg = _OSInstrument
 # Caching is now part of _OSInstrumentFFmpeg
 _OSInstrumentFFmpegCached = _OSInstrumentFFmpeg
 
+# - LRU cache
+
+class LRUCache:
+    """An LRU cache
+
+    The maxsize argument specifies the maximum size the cache can grow to.
+    Specifying 0 means that the cache will remain empty. Specifying None means
+    the cache will grow without bound.
+
+    To get a value, call .get with a key (to uniquely identify each value, and
+    with a zero-argument function that returns a value for when it doesn't
+    exist.
+
+    To clear the cache and reset the hits / misses counters, call .clear().
+
+    To change the maxsize, set the .maxsize property to its new value. Note
+    that it won't take effect until the next .get call with a key not in the
+    cache. It is not recommended, but you can call ._ensure_size() to force
+    it to resize the cache.
+
+    For info on the number of hits / misses, check the .hits and .misses
+    attributes. You can reset them to 0 manually if you'd like.
+
+    Checking and modifying the cache manually isn't recommended, but they are
+    available through the .results attribute. It stores a dictionary between
+    keys and values. You can clear them manually if you'd like.
+
+    """
+    def __init__(self, *, maxsize=128):
+        # Set cache state
+        self.maxsize = maxsize
+        self.hits = 0
+        self.misses = 0
+        self.results = {}
+
+    def get(self, key, value_func):
+        """Return the value for this key, calling value_func if needed"""
+        # If the key ain't in the cache...
+        if key not in self.results:
+            # Get the value from calling the function
+            value = value_func()
+            # Update cache with the value
+            result = self._miss(key, value)
+            # Ensure the cache's size isn't over self.maxsize
+            self._ensure_size()
+
+        # If the key is in the cache...
+        else:
+            result = self._hit(key)
+
+        # Return the value
+        return result
+
+    def clear(self):
+        """Clears the cache and the hits / misses counters"""
+        self.hits = 0
+        self.misses = 0
+        self.results.clear()
+
+    def __repr__(self):
+        maxsize = self.maxsize
+        hits = self.hits
+        misses = self.misses
+        return f"<{type(self).__name__} {maxsize=} {hits=} {misses=}>"
+
+    def _miss(self, key, value):
+        # Note down that we missed it
+        self.misses += 1
+        # Update cache with the iterator
+        result = self.results[key] = value
+        # Return the tee
+        return result
+
+    def _hit(self, key):
+        # Note down that we hit it
+        self.hits += 1
+        # Move key to the end of the dict (LRU cache)
+        result = self.results.pop(key)
+        self.results[key] = result
+        # Return the tee
+        return result
+
+    def _ensure_size(self):
+        if self.maxsize is None:  # Cache is not unbounded
+            return False
+        if len(self.results) <= max(0, self.maxsize):
+            return False
+        # Fast path for maxsize of 0 (clear everything)
+        if self.maxsize == 0:
+            self.results.clear()
+            return True
+        # Get old keys in the cache (order is kept in a dict)
+        old_keys = list(itertools.islice(
+            iter(self.results.keys()),
+            len(self.results) - self.maxsize,
+        ))
+        # Remove old keys
+        for old_key in old_keys:
+            self.results.pop(old_key)
+        # Force a resizing of the dictionaries (resize on inserts)
+        self.results[1] = 1
+        del self.results[1]
+        return True
+
 # - LRU cache for iterators
 
 class LRUIterableCache:
