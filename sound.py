@@ -1066,9 +1066,9 @@ def _layer(notes, func, *, line_length=1):
 
 def reload():
     """Reloads this module. Helper function"""
-    import sound
     import importlib
-    importlib.reload(sound)
+    name = __name__.partition(".")[0]
+    importlib.reload(importlib.import_module(name))
 
 
 # - Builtin music
