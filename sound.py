@@ -744,7 +744,7 @@ play_source = play_discord_source  # Old name
 
 if has_discord:
     # Make our class a subclass of discord.py AudioSource if possible
-    class IteratorSource(discord.AudioSource):
+    class DiscordIteratorSource(discord.AudioSource):
         """Internal subclass of discord's AudioSource for iterators
 
         See wrap_discord_source for more info.
@@ -771,6 +771,7 @@ if has_discord:
                 return next(self._iterator)
             except StopIteration:
                 return b""
+    IteratorSource = DiscordIteratorSource  # Old name
 
 def wrap_discord_source(iterator, /, *, is_opus=False):
     """Wraps an iterator of bytes into an audio source
@@ -787,7 +788,7 @@ def wrap_discord_source(iterator, /, *, is_opus=False):
     """
     if not has_discord:
         raise RuntimeError("discord.py needed to make discord.AudioSources")
-    return IteratorSource(iterator, is_opus=is_opus)
+    return DiscordIteratorSource(iterator, is_opus=is_opus)
 iterator_to_source = wrap_discord_source  # Old name
 
 def chunked(iterator, /):
