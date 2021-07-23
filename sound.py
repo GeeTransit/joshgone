@@ -597,6 +597,11 @@ def chunked_ffmpeg_process(process):
         process.kill()
         if process.poll() is None:
             process.communicate()
+        if process.returncode != 0:
+            raise RuntimeError(
+                "process ended with a nonzero return code:"
+                f" {process.returncode}"
+            )
 iterator_from_process = chunked_ffmpeg_process  # Old name
 
 # - Experimental OS sound functions
