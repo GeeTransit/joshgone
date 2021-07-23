@@ -40,6 +40,7 @@ Audio source utilities:
 discord.py utilities:
     wrap_discord_source
     unwrap_discord_source
+    play_discord_source
 
 FFmpeg utilities:
     create_ffmpeg_process
@@ -48,7 +49,7 @@ FFmpeg utilities:
 A very simple example: (Note that ctx is a discord.Context)
 
     import sound as s
-    await s.play_source(
+    await s.play_discord_source(
         ctx.voice_client,
         s.wrap_discord_source(s.chunked(s.sine(440, seconds=1))),
     )
@@ -62,7 +63,7 @@ A longer example:
     frequencies = s.make_frequencies_dict()
     notes = "a3 c e a g e c e d e d c a3 c a3 g3".split()
 
-    await s.play_source(
+    await s.play_discord_source(
         ctx.voice_client,
         s.wrap_discord_source(s.chunked(itertools.chain.from_iterable(
             s.sine(frequencies[indices[note]], seconds=0.5)
@@ -84,7 +85,7 @@ An even longer example:
         re mi,re - mi
     '''
 
-    await s.play_source(
+    await s.play_discord_source(
         ctx.voice_client,
         s.wrap_discord_source(s.chunked(
             s.scale(2, s._layer(
@@ -728,7 +729,7 @@ def exact(seconds, sound, /):
 
 # - Utility for audio sources
 
-async def play_source(voice_client, source):
+async def play_discord_source(voice_client, source):
     """Plays and waits until the source finishes playing"""
     future = asyncio.Future()
     def after(exc):
@@ -739,6 +740,7 @@ async def play_source(voice_client, source):
     voice_client.play(source, after=after)
     await future
     return future.result()
+play_source = play_discord_source  # Old name
 
 if has_discord:
     # Make our class a subclass of discord.py AudioSource if possible
