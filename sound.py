@@ -265,7 +265,7 @@ class _OSInstrument:
         self.options = options
         # Create the cache for source iterators
         if cache is None:
-            cache = LRUIterableCache(maxsize=max_cache_size)
+            cache = LRUCache(maxsize=max_cache_size)
         self.cache = cache
 
     # Simple hash (we compare instruments by identity)
@@ -285,8 +285,17 @@ class _OSInstrument:
         if start is None:
             return ()
         # Check the cache before getting the sound
+        # Note: We store itertools.tee objects because of a few reasons:
+        #     1. They can be iterated at different speeds.
+        #     2. They are iterators (lazily evaluated).
+        #     3. They can be copied (major orz for this one).
+        #     4. They are fast (implemented in C).
+        # The .cache.get returns a tee object, whether it was cached or freshly
+        # made. We then make a copy of the tee to keep the original unchanged.
+        # The copied tee iterator is what we will be unchunking and returning.
         key = (self, index)
-        iterator = self.cache.get(key, lambda: self._iterator_at(start))
+        value_func = lambda: itertools.tee(self._iterator_at(start), 1)[0]
+        iterator = copy.copy(self.cache.get(key, value_func))
         # Unchunk and convert into a sound
         yield from ((x+y)/2 for x, y in unchunked(iterator))
 
