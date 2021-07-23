@@ -285,7 +285,7 @@ class _OSInstrument:
         start = self.start_of(index)
         if start is None:
             return ()
-        # Check the cache before getting the sound
+        # Check the cache before getting the iterator
         key = (self, index)
         iterator = self.cache.get(key, lambda: self._iterator_at(start))
         # Unchunk and convert into a sound
@@ -296,7 +296,7 @@ class _OSInstrument:
         # If the index is out of range, return None
         if not self.min <= index <= self.max:
             return None
-        # Return the starting place otherwise
+        # Return the starting time otherwise
         return (index - self.min) * self.seconds
 
     def ffmpeg_args_for(self, start, *, before_options=None, options=None):
@@ -413,6 +413,7 @@ class LRUCache:
 
         # If the key is in the cache...
         else:
+            # Get the cached value
             result = self._hit(key)
 
         # Return the value
@@ -433,9 +434,9 @@ class LRUCache:
     def _miss(self, key, value):
         # Note down that we missed it
         self.misses += 1
-        # Update cache with the iterator
+        # Update cache with the value
         result = self.results[key] = value
-        # Return the tee
+        # Return the value
         return result
 
     def _hit(self, key):
@@ -444,7 +445,7 @@ class LRUCache:
         # Move key to the end of the dict (LRU cache)
         result = self.results.pop(key)
         self.results[key] = result
-        # Return the tee
+        # Return the value
         return result
 
     def _ensure_size(self):
@@ -464,7 +465,7 @@ class LRUCache:
         # Remove old keys
         for old_key in old_keys:
             self.results.pop(old_key)
-        # Force a resizing of the dictionaries (resize on inserts)
+        # Force a resizing of the dictionary (resize on inserts)
         self.results[1] = 1
         del self.results[1]
         return True
@@ -504,6 +505,7 @@ class LRUIterableCache(LRUCache):
 
         # If the key is in the cache...
         else:
+            # Get the cached iterator
             result = self._hit(key)
 
         # Return a copy of the tee in self.results
@@ -587,7 +589,7 @@ def chunked_ffmpeg_process(process):
     FRAME_SIZE = SAMPLES_PER_FRAME * SAMPLE_SIZE
 
     try:
-        read = process.stdout.read
+        read = process.stdout.read  # speedup by removing a getattr
         while data := read(FRAME_SIZE):
             yield data
 
@@ -672,7 +674,7 @@ def fade(iterator, /, *, fadein=0.005, fadeout=0.005):
         for i in range(split, len(last)):  # Fade out
             yield last[i] * ((len(last)-i) / (len(last)-split))
         return e.value
-    # Yield the fadeein part
+    # Yield the fadein part
     for i in range(0, fadein):
         yield last[i] * ((i+1) / fadein)
     # Remove the fadein
