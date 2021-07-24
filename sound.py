@@ -292,7 +292,7 @@ class _OSInstrument:
         yield from ((x+y)/2 for x, y in unchunked(chunks))
 
     def start_of(self, index=A4_INDEX):
-        """Returns the start time for the specified note"""
+        """Returns the start time for the specified note or None if invalid"""
         # If the index is out of range, return None
         if not self.min <= index <= self.max:
             return None
