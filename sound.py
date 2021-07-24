@@ -284,7 +284,7 @@ class _OSInstrument:
         # If the index is out of range, return an empty sound (no points)
         start = self.start_of(index)
         if start is None:
-            return ()
+            return
         # Check the cache before getting the chunks
         key = (self, index)
         chunks = self.cache.get(key, lambda: self._chunks_at(start))
