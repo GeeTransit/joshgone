@@ -216,6 +216,7 @@ class _OSInstrument:
     _INDEX_OFFSET = 2 * 12
 
     _settings = None
+    _cache = None
 
     def __init__(
         self,
@@ -225,7 +226,7 @@ class _OSInstrument:
         before_options=None,
         options=None,
         cache=None,
-        max_cache_size=128,
+        max_cache_size=None,
     ):
         """Create an instrument
 
@@ -266,7 +267,12 @@ class _OSInstrument:
         self.options = options
         # Create the cache for source iterators
         if cache is None:
-            cache = LRUIterableCache(maxsize=max_cache_size)
+            if max_cache_size is not None:
+                cache = LRUIterableCache(maxsize=max_cache_size)
+            else:
+                if self._cache is None:
+                    self._cache = LRUIterableCache()
+                cache = self._cache
         self.cache = cache
 
     # Simple hash (we compare instruments by identity)
