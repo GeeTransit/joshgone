@@ -43,6 +43,7 @@ discord.py utilities:
     play_discord_source
 
 FFmpeg utilities:
+    make_ffmpeg_section_args
     create_ffmpeg_process
     chunked_ffmpeg_process
 
@@ -326,20 +327,19 @@ class _OSInstrument:
         ):
             # Strings are naughty. Force user to split them beforehand
             raise ValueError("FFmpeg options should be lists, not strings")
-        return [
-            "-ss", str(start),
-            *(self.before_options or ()),
-            *(before_options or ()),
-            "-i", self.filename,
-            "-f", "s16le",
-            "-ar", "48000",
-            "-ac", "2",
-            "-loglevel", "warning",
-            "-t", str(self.seconds),
-            *(self.options or ()),
-            *(options or ()),
-            "pipe:1",
-        ]
+        return make_ffmpeg_section_args(
+            self.filename,
+            start,
+            self.seconds,
+            before_options=[
+                *(self.before_options or ()),
+                *(before_options or ()),
+            ],
+            options=[
+                *(self.options or ()),
+                *(options or ()),
+            ],
+        )
 
     @classmethod
     def load_settings(cls, filename=None, *, force=False):
@@ -598,6 +598,55 @@ def chunked_ffmpeg_process(process):
                 f" {process.returncode}"
             )
 iterator_from_process = chunked_ffmpeg_process  # Old name
+
+def make_ffmpeg_section_args(
+    filename,
+    start,
+    length,
+    *,
+    before_options=(),
+    options=(),
+):
+    """Returns a list of arguments to FFmpeg
+
+    It will take the required amount of audio starting from the specified start
+    time and convert them into PCM 16-bit stereo audio to be piped to stdout.
+
+    The before_options argument will be passed after `-ss` and before `-i`, and
+    the options argument will be passed after `-t` and before `pipe:1`.
+
+    The returned args are of this form:
+
+        -ss {start}
+        -t {length}
+        {before_options}
+        -i {filename}
+        -f s16le
+        -ar 48000
+        -ac 2
+        -loglevel warning
+        {options}
+        pipe:1
+
+    """
+    if start is None:
+        raise ValueError("start must be a float")
+    if isinstance(before_options, str) or isinstance(options, str):
+        # Strings are naughty. Force user to split them beforehand
+        raise ValueError("FFmpeg options should be lists, not strings")
+    return [
+        "-ss", str(start),
+        "-t", str(length),
+        *(before_options or ()),
+        "-i", filename,
+        "-f", "s16le",
+        "-ar", "48000",
+        "-ac", "2",
+        "-loglevel", "warning",
+        *(options or ()),
+        "pipe:1",
+    ]
+
 
 # - Experimental OS sound functions
 
