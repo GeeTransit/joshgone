@@ -336,10 +336,12 @@ class _OSInstrument:
         ]
 
     @classmethod
-    def load_settings(cls, *, force=False):
+    def load_settings(cls, filename=None, *, force=False):
         if not force and cls._settings is not None:
             return False
-        with open(cls._SETTINGS_FILENAME) as file:
+        if filename is None:
+            filename = cls._SETTINGS_FILENAME
+        with open(filename) as file:
             cls._settings = json.load(file)
         return True
 
