@@ -801,7 +801,7 @@ def chunked(sound, /):
     int_to_bytes = int.to_bytes  # speedup by removing a getattr
     current = bytearray()
     for point in sound:
-        if type(num) is tuple:
+        if type(point) is tuple:
             left, right = point
         else:
             left = right = point
