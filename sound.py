@@ -52,7 +52,7 @@ A very simple example: (Note that ctx is a discord.Context)
     import sound as s
     await s.play_discord_source(
         ctx.voice_client,
-        s.wrap_discord_source(s.chunked(s.sine(440, seconds=1))),
+        s.wrap_discord_source(s.chunked(s.exact(1, s.sine(440)))),
     )
 
 A longer example:
@@ -67,7 +67,7 @@ A longer example:
     await s.play_discord_source(
         ctx.voice_client,
         s.wrap_discord_source(s.chunked(itertools.chain.from_iterable(
-            s.sine(frequencies[indices[note]], seconds=0.5)
+            s.exact(0.5, s.sine(frequencies[indices[note]]))
             for note in notes
         ))),
     )
@@ -126,28 +126,48 @@ NOTE_NAMES = "c c# d d# e f f# g g# a a# b".split()
 # - Sound generators
 
 def silence(*, seconds=1):
-    """Returns silence for the specified amount of time"""
+    """Returns silence
+
+    Note that passing a time is now deprecated. Wrap exact around this instead.
+
+    """
     for _ in passed(seconds):
         yield 0
 
 def sine(freq=A4_FREQUENCY, *, seconds=1):
-    """Returns a sine wave at freq for the specified amount of time"""
+    """Returns a sine wave at freq
+
+    Note that passing a time is now deprecated. Wrap exact around this instead.
+
+    """
     for x in passed(seconds):
         yield math.sin(2*math.pi * freq * x)
 sine_wave = sine  # Old name
 
 def square(freq=A4_FREQUENCY, *, seconds=1):
-    """Returns a square wave at freq for the specified amount of time"""
+    """Returns a square wave at freq
+
+    Note that passing a time is now deprecated. Wrap exact around this instead.
+
+    """
     for x in passed(seconds):
         yield (freq*x % 1 > 0.5) * 2 - 1
 
 def sawtooth(freq=A4_FREQUENCY, *, seconds=1):
-    """Returns a sawtooth wave at freq for the specified amount of time"""
+    """Returns a sawtooth wave at freq
+
+    Note that passing a time is now deprecated. Wrap exact around this instead.
+
+    """
     for x in passed(seconds):
         yield ((freq*x + 0.5) % 1 - 0.5) * 2
 
 def triangle(freq=A4_FREQUENCY, *, seconds=1):
-    """Returns a triangle wave at freq for the specified amount of time"""
+    """Returns a triangle wave at freq
+
+    Note that passing a time is now deprecated. Wrap exact around this instead.
+
+    """
     for x in passed(seconds):
         yield (-abs(-((freq*x + freq/2)%1) + 0.5) + 0.25) * 4
 
