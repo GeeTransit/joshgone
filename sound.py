@@ -400,7 +400,7 @@ class LRUCache:
         self.misses = 0
         self.results = {}
 
-    def get(self, key, value_func):
+    def get(self, key, value_func, /):
         """Return the value for this key, calling value_func if needed"""
         # If the key ain't in the cache...
         if key not in self.results:
@@ -492,7 +492,7 @@ class LRUIterableCache(LRUCache):
     tee objects.
 
     """
-    def get(self, key, iterable_func):
+    def get(self, key, iterable_func, /):
         """Return the iterator for this key, calling iterable_func if needed"""
         value_func = lambda: itertools.tee(iterable_func(), 1)[0]
         return copy.copy(super().get(key, value_func))
