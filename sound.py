@@ -505,7 +505,7 @@ class LRUIterableCache(LRUCache):
         value_func = lambda: itertools.tee(iterable_func(), 1)[0]
         return copy.copy(super().get(key, value_func))
 
-def lru_iter_cache(func=None, *, maxsize=128):
+def lru_iter_cache(func=None, *, maxsize=128, cache=None):
     """Decorator to wrap a function returning iterables
 
     If maxsize is 0, no caching will be done. If maxsize is None, the cache
@@ -517,8 +517,9 @@ def lru_iter_cache(func=None, *, maxsize=128):
     if func is None:
         return functools.partial(lru_iter_cache, maxsize=maxsize)
 
-    # Create the cache instance
-    cache = LRUIterableCache(maxsize=maxsize)
+    # Create the cache instance if necessary
+    if cache is None:
+        cache = LRUIterableCache(maxsize=maxsize)
 
     # Wrap the original function
     @functools.wraps(func)
