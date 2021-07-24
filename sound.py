@@ -285,11 +285,11 @@ class _OSInstrument:
         start = self.start_of(index)
         if start is None:
             return ()
-        # Check the cache before getting the iterator
+        # Check the cache before getting the chunks
         key = (self, index)
-        iterator = self.cache.get(key, lambda: self._iterator_at(start))
+        chunks = self.cache.get(key, lambda: self._chunks_at(start))
         # Unchunk and convert into a sound
-        yield from ((x+y)/2 for x, y in unchunked(iterator))
+        yield from ((x+y)/2 for x, y in unchunked(chunks))
 
     def start_of(self, index=A4_INDEX):
         """Returns the start time for the specified note"""
@@ -343,12 +343,12 @@ class _OSInstrument:
             cls._settings = json.load(file)
         return True
 
-    def _iterator_at(self, start):
+    def _chunks_at(self, start):
         # Get FFmpeg arguments
         args = self.ffmpeg_args_for(start)
         # Create the process
         process = create_ffmpeg_process(*args)
-        # Create an iterator from the process
+        # Create a chunks from the process
         return chunked_ffmpeg_process(process)
 
     def cache_clear(self):
@@ -684,9 +684,9 @@ def both(iterator, /):
     for num in iterator:
         yield num, num
 
-def volume(factor, iterator, /):
+def volume(factor, sound, /):
     """Multiplies each point by the specified factor"""
-    for num in iterator:
+    for num in sound:
         yield num * factor
 scale = volume  # Old name
 
@@ -775,17 +775,17 @@ def wrap_discord_source(iterator, /, *, is_opus=False):
     return DiscordIteratorSource(iterator, is_opus=is_opus)
 iterator_to_source = wrap_discord_source  # Old name
 
-def chunked(iterator, /):
+def chunked(sound, /):
     """Converts a stream of floats or two-tuples of floats in [-1, 1) to bytes
 
     This is hardcoded to return 20ms chunks of signed 16-bit little endian
     stereo 48kHz audio.
 
-    If the iterator returns a single float, it will have both sides play the
-    same point.
+    If the sound yield float instead of two-tuples, it will have both sides
+    play the same point.
 
-    If the iterator doesn't complete on a chunk border, null bytes will be
-    added until it reaches the required length, which should be 3840 bytes.
+    If the sound doesn't complete on a chunk border, null bytes will be added
+    until it reaches the required length, which should be 3840 bytes.
 
     Note that floats not in the range [-1, 1) will be silently truncated to
     fall inside the range. For example, 1.5 will be processed as 1 and -1.5
@@ -800,11 +800,11 @@ def chunked(iterator, /):
     size = points_per_chunk * 2 * 2  # 16-bit stereo
     int_to_bytes = int.to_bytes  # speedup by removing a getattr
     current = bytearray()
-    for num in iterator:
+    for point in sound:
         if type(num) is tuple:
-            left, right = num
+            left, right = point
         else:
-            left = right = num
+            left = right = point
         left = max(low, min(high, int(volume * left)))
         right = max(low, min(high, int(volume * right)))
         current += int_to_bytes(left, 2, "little", signed=True)
