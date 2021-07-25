@@ -535,7 +535,7 @@ def lru_iter_cache(func=None, *, maxsize=128, cache=None):
 
     """
     if func is None:
-        return functools.partial(lru_iter_cache, maxsize=maxsize)
+        return functools.partial(lru_iter_cache, maxsize=maxsize, cache=cache)
 
     # Create the cache instance if necessary
     if cache is None:
