@@ -428,7 +428,7 @@ class LRUCache:
         self.misses = 0
         self.results = {}
 
-    def get(self, key, value_func, /):
+    def get(self, key, value_func):
         """Return the value for this key, calling value_func if needed"""
         # If the key ain't in the cache...
         if key not in self.results:
@@ -454,10 +454,13 @@ class LRUCache:
         self.results.clear()
 
     def __repr__(self):
-        maxsize = self.maxsize
-        hits = self.hits
-        misses = self.misses
-        return f"<{type(self).__name__} {maxsize=} {hits=} {misses=}>"
+        return (
+            f"<{type(self).__name__}"
+            f" maxsize={self.maxsize}"
+            f" hits={self.hits}"
+            f" misses={self.misses}"
+            ">"
+        )
 
     def _miss(self, key, value):
         # Note down that we missed it
@@ -520,7 +523,7 @@ class LRUIterableCache(LRUCache):
     tee objects.
 
     """
-    def get(self, key, iterable_func, /):
+    def get(self, key, iterable_func):
         """Return the iterator for this key, calling iterable_func if needed"""
         value_func = lambda: itertools.tee(iterable_func(), 1)[0]
         return copy.copy(super().get(key, value_func))
@@ -715,7 +718,7 @@ def passed(seconds=1):
 
 # - Sound effects
 
-def fade(iterator, /, *, fadein=0.005, fadeout=0.005):
+def fade(iterator, *, fadein=0.005, fadeout=0.005):
     """Fades in and out of the sound
 
     If the sound is less than fadein + fadeout seconds, the time between fading
@@ -760,23 +763,23 @@ def fade(iterator, /, *, fadein=0.005, fadeout=0.005):
             yield last[j] * ((fadeout-i) / fadeout)
         return e.value
 
-def both(iterator, /):
+def both(iterator):
     """Deprecated. sound.chunked accepts floats"""
     for num in iterator:
         yield num, num
 
-def volume(factor, sound, /):
+def volume(factor, sound):
     """Multiplies each point by the specified factor"""
     for num in sound:
         yield num * factor
 scale = volume  # Old name
 
-def cut(seconds, sound, /):
+def cut(seconds, sound):
     """Ends the sound after the specified time"""
     for _ in range(int(seconds * RATE)):
         yield next(sound)
 
-def pad(seconds, sound, /):
+def pad(seconds, sound):
     """Pads the sound with silence if shorter than the specified time"""
     for x in passed(None):
         try:
@@ -787,7 +790,7 @@ def pad(seconds, sound, /):
             yield point
     yield from silence(seconds=seconds - x)
 
-def exact(seconds, sound, /):
+def exact(seconds, sound):
     """Cuts or pads the sound to make it exactly the specified time"""
     return (yield from cut(seconds, pad(seconds, sound)))
 
@@ -838,7 +841,7 @@ if has_discord:
                 return b""
     IteratorSource = DiscordIteratorSource  # Old name
 
-def wrap_discord_source(iterator, /, *, is_opus=False):
+def wrap_discord_source(iterator, *, is_opus=False):
     """Wraps an iterator of bytes into an audio source
 
     If is_opus is False (the default), the iterator must yield 20ms of signed
@@ -856,7 +859,7 @@ def wrap_discord_source(iterator, /, *, is_opus=False):
     return DiscordIteratorSource(iterator, is_opus=is_opus)
 iterator_to_source = wrap_discord_source  # Old name
 
-def chunked(sound, /):
+def chunked(sound):
     """Converts a stream of floats or two-tuples of floats in [-1, 1) to bytes
 
     This is hardcoded to return 20ms chunks of signed 16-bit little endian
@@ -899,7 +902,7 @@ def chunked(sound, /):
         yield bytes(current)
 chunk = chunked  # Old name
 
-def unwrap_discord_source(source, /):
+def unwrap_discord_source(source):
     """Converts an audio source into a stream of bytes
 
     This basically does the opposite of wrap_discord_source. See that function's
@@ -921,7 +924,7 @@ def unwrap_discord_source(source, /):
             cleanup()
 source_to_iterator = unwrap_discord_source  # Old name
 
-def unchunked(chunks, /):
+def unchunked(chunks):
     """Converts a stream of bytes to two-tuples of floats in [-1, 1)
 
     This basically does the opposite of chunked. See that function's
