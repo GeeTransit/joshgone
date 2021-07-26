@@ -606,7 +606,10 @@ def chunked_ffmpeg_process(process):
 
     try:
         read = process.stdout.read  # speedup by removing a getattr
-        while data := read(FRAME_SIZE_BYTES):
+        while True:
+            data = read(FRAME_SIZE_BYTES)
+            if not data:
+                break
             yield data
 
     finally:
@@ -904,7 +907,10 @@ def unwrap_discord_source(source, /):
 
     """
     try:
-        while chunk := source.read():
+        while True:
+            chunk = source.read()
+            if not chunk:
+                break
             yield chunk
     finally:
         try:
