@@ -27,7 +27,6 @@ class InfoWrapper:
     id: int  # guild id
     data: dict = dataclasses.field(repr=False)  # bot._music_data
     LATEST_VERSION: typing.ClassVar[int] = 3  # version to upgrade to
-    NAMES: typing.ClassVar[int] = "queue current waiting version loop processing".split()  # all attributes needed
 
     def __post_init__(self):
         if self.id not in self.data:
@@ -58,7 +57,7 @@ class InfoWrapper:
 
     # Returns a dict with all info for debugging purposes. Modifying this dict won't update the data dict
     def to_dict(self):
-        return {name: getattr(self, name) for name in self.NAMES}
+        return dict(self.data[self.id])
 
     # Returns whether the name is in the data dict
     def defined(self, name):
@@ -131,10 +130,6 @@ class Music(commands.Cog):
         # Start the advancer's auto-restart task
         self.advance_task = None
         self.advancer.start()
-        # Ensure all attributes exist in the data dict
-        for name in InfoWrapper.NAMES:
-            if name not in self.data:
-                self.data[name] = {}
 
     # Cancel just the advancer and the auto-restart tasks
     def cog_unload(self):
@@ -252,9 +247,6 @@ class Music(commands.Cog):
     # Helper function to remove the info for a guild
     def pop_info(self, ctx):
         wrapped = InfoWrapper(ctx.guild.id, self.data)
-        for name in InfoWrapper.NAMES:
-            if wrapped.defined(name):
-                del wrapped[name]
         self.data.pop(self.id, None)
         return wrapped
 
