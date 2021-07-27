@@ -122,13 +122,10 @@ class Music(commands.Cog):
         self.ytdl_opts = ytdl_opts
         self.ffmpeg_opts = ffmpeg_opts
         # Data is persistent between extension reloads
-        if not hasattr(bot, "_music_info"):
-            bot._music_info = {}
         if not hasattr(bot, "_music_data"):
             bot._music_data = {}
         if not hasattr(bot, "_music_advance_queue"):
             bot._music_advance_queue = asyncio.Queue()
-        self.infos = bot._music_info
         self.data = bot._music_data
         self.advance_queue = bot._music_advance_queue
         # Start the advancer's auto-restart task
@@ -249,15 +246,7 @@ class Music(commands.Cog):
     def get_info(self, ctx):
         guild_id = ctx.guild.id
         wrapped = InfoWrapper(guild_id, self.data)
-        if guild_id in self.infos:
-            info = self.infos[guild_id]
-            if not isinstance(info, dict):
-                info = dataclasses.asdict(info)
-            for name, value in info.items():
-                wrapped[name] = value
         wrapped.fill()
-        if guild_id in self.infos:
-            del self.infos[guild_id]
         return wrapped
 
     # Helper function to remove the info for a guild
