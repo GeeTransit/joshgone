@@ -34,6 +34,7 @@ class InfoWrapper:
             return self.data[name][self.id]
         except KeyError:
             raise AttributeError(name)
+    __getitem__ = __getattr__
 
     def __setattr__(self, name, value):
         if name in ("id", "data"):
@@ -41,6 +42,7 @@ class InfoWrapper:
             super().__setattr__(name, value)
         else:
             self.data[name][self.id] = value
+    __setitem__ = __setattr__
 
     def __delattr__(self, name):
         if name in ("id", "data"):
@@ -48,6 +50,7 @@ class InfoWrapper:
             super().__delattr__(name)
         else:
             del self.data[name][self.id]
+    __delitem__ = __delattr__
 
     # Returns a dict with all info for debugging purposes. Modifying this dict won't update the data dict
     def to_dict(self):
