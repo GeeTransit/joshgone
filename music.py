@@ -21,77 +21,6 @@ class Song:
     ty: str  # can be "local" or "stream"
     query: str  # the string passed to Music._play_{ty}
 
-# Wraps the info for a guild with __get/set/delattr__ methods
-@dataclasses.dataclass
-class InfoWrapper:
-    id: int  # guild id
-    data: dict = dataclasses.field(repr=False)  # bot._music_data
-    LATEST_VERSION: typing.ClassVar[int] = 3  # version to upgrade to
-
-    def __post_init__(self):
-        if self.id not in self.data:
-            self.data[self.id] = {}
-
-    def __getattr__(self, name):
-        try:
-            return self.data[self.id][name]
-        except KeyError:
-            raise AttributeError(name)
-    __getitem__ = __getattr__
-
-    def __setattr__(self, name, value):
-        if name in ("id", "data"):
-            # This is special cased or else it would assign it to the data dict
-            super().__setattr__(name, value)
-        else:
-            self.data[self.id][name] = value
-    __setitem__ = __setattr__
-
-    def __delattr__(self, name):
-        if name in ("id", "data"):
-            # Special cased for the same reason as in __setattr__
-            super().__delattr__(name)
-        else:
-            del self.data[self.id][name]
-    __delitem__ = __delattr__
-
-    # Returns a dict with all info for debugging purposes. Modifying this dict won't update the data dict
-    def to_dict(self):
-        return dict(self.data[self.id])
-
-    # Returns whether the name is in the data dict
-    def defined(self, name):
-        return name in self.data[self.id]
-
-    # Updates the info to the latest version's format. This calls the _update{version} methods until the latest version is reached.
-    def fill(self):
-        if not self.defined("version"):
-            self["version"] = 0
-        while (version := self["version"]) != self.LATEST_VERSION:
-            getattr(self, f"_update{version}")()
-            if version == self["version"]:
-                raise TypeError(f"version unchanged: {version}")
-
-    # - Update methods
-    def _update0(self):
-        if not self.defined("queue"):
-            self["queue"] = deque()
-        if not self.defined("current"):
-            self["current"] = None
-        if not self.defined("waiting"):
-            self["waiting"] = False
-        self["version"] = 1
-
-    def _update1(self):
-        if not self.defined("loop"):
-            self["loop"] = False
-        self["version"] = 2
-
-    def _update2(self):
-        if not self.defined("processing"):
-            self["processing"] = False
-        self["version"] = 3
-
 class Music(commands.Cog):
     # Options that are passed to youtube-dl
     _DEFAULT_YTDL_OPTS = {
@@ -240,21 +169,21 @@ class Music(commands.Cog):
     # Helper function to create the info for a guild
     def get_info(self, ctx):
         guild_id = ctx.guild.id
-        wrapped = InfoWrapper(guild_id, self.data)
-        if "queue" not in wrapped:
+        if guild_id not in self.data:
+            wrapped = self.data[guild_id] = {}
             wrapped["queue"] = deque()
             wrapped["current"] = None
             wrapped["waiting"] = False
             wrapped["loop"] = False
             wrapped["processing"] = False
             wrapped["version"] = 3
+        else:
+            wrapped = self.data[guild_id]
         return wrapped
 
     # Helper function to remove the info for a guild
     def pop_info(self, ctx):
-        wrapped = InfoWrapper(ctx.guild.id, self.data)
-        self.data.pop(ctx.guild.id, None)
-        return wrapped
+        return self.data.pop(ctx.guild.id, None)
 
     # Creates an audio source from a url
     async def player_from_url(self, url, *, loop=None, stream=False):
