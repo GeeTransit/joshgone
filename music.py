@@ -29,9 +29,13 @@ class InfoWrapper:
     LATEST_VERSION: typing.ClassVar[int] = 3  # version to upgrade to
     NAMES: typing.ClassVar[int] = "queue current waiting version loop processing".split()  # all attributes needed
 
+    def __post_init__(self):
+        if self.id not in self.data:
+            self.data[self.id] = {}
+
     def __getattr__(self, name):
         try:
-            return self.data[name][self.id]
+            return self.data[self.id][name]
         except KeyError:
             raise AttributeError(name)
     __getitem__ = __getattr__
@@ -41,7 +45,7 @@ class InfoWrapper:
             # This is special cased or else it would assign it to the data dict
             super().__setattr__(name, value)
         else:
-            self.data[name][self.id] = value
+            self.data[self.id][name] = value
     __setitem__ = __setattr__
 
     def __delattr__(self, name):
@@ -49,7 +53,7 @@ class InfoWrapper:
             # Special cased for the same reason as in __setattr__
             super().__delattr__(name)
         else:
-            del self.data[name][self.id]
+            del self.data[self.id][name]
     __delitem__ = __delattr__
 
     # Returns a dict with all info for debugging purposes. Modifying this dict won't update the data dict
@@ -58,7 +62,7 @@ class InfoWrapper:
 
     # Returns whether the name is in the data dict
     def defined(self, name):
-        return self.id in self.data[name]
+        return name in self.data[self.id]
 
     # Updates the info to the latest version's format. This calls the _update{version} methods until the latest version is reached.
     def fill(self):
@@ -262,6 +266,7 @@ class Music(commands.Cog):
         for name in InfoWrapper.NAMES:
             if wrapped.defined(name):
                 del wrapped[name]
+        self.data.pop(self.id, None)
         return wrapped
 
     # Creates an audio source from a url
