@@ -247,7 +247,7 @@ class Music(commands.Cog):
     # Helper function to remove the info for a guild
     def pop_info(self, ctx):
         wrapped = InfoWrapper(ctx.guild.id, self.data)
-        self.data.pop(self.id, None)
+        self.data.pop(ctx.guild.id, None)
         return wrapped
 
     # Creates an audio source from a url
