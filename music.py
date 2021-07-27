@@ -19,7 +19,13 @@ import youtube_dl
 
 import patched_player
 import sound as s
-import online_sequencer_get_note_infos as os_note_infos
+
+try:
+    import online_sequencer_get_note_infos as os_note_infos
+except ImportError:
+    has_os = False
+else:
+    has_os = True
 
 class Music(commands.Cog):
     # Options that are passed to youtube-dl
@@ -349,20 +355,21 @@ class Music(commands.Cog):
             self.schedule(ctx)
         await ctx.send(f"Added to queue: {ty} {url}")
 
-    @commands.command(name="_play_os")
-    async def play_os(self, ctx, *, url):
-        """Plays an Online Sequencer sequence"""
-        if len(url) > 100:
-            raise ValueError("url too long (length over 100)")
-        if not url.isprintable():
-            raise ValueError(f"url not printable: {url!r}")
-        print(ctx.message.author.name, "queued", repr(url))
-        info = self.get_info(ctx)
-        queue = info["queue"]
-        queue.append({"ty": "os", "query": url})
-        if info["current"] is None:
-            self.schedule(ctx)
-        await ctx.send(f"Added to queue: os {url}")
+    if has_os:
+        @commands.command(name="_play_os")
+        async def play_os(self, ctx, *, url):
+            """Plays an Online Sequencer sequence"""
+            if len(url) > 100:
+                raise ValueError("url too long (length over 100)")
+            if not url.isprintable():
+                raise ValueError(f"url not printable: {url!r}")
+            print(ctx.message.author.name, "queued", repr(url))
+            info = self.get_info(ctx)
+            queue = info["queue"]
+            queue.append({"ty": "os", "query": url})
+            if info["current"] is None:
+                self.schedule(ctx)
+            await ctx.send(f"Added to queue: os {url}")
 
     @commands.command()
     async def _add_playlist(self, ctx, *, url):
