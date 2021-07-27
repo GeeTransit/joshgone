@@ -826,13 +826,19 @@ if has_discord:
             return self._is_opus
 
         def cleanup(self):
+            if self._iterator is None:
+                return
             try:
                 close = self._iterator.close
             except AttributeError:
                 pass
             else:
-                close()
-            self._iterator = None
+                try:
+                    close()
+                except BaseException as e:
+                    pass
+            finally:
+                self._iterator = None
 
         def read(self):
             try:
