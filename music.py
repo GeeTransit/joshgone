@@ -15,12 +15,6 @@ import youtube_dl
 
 import patched_player
 
-# Holds a song request
-@dataclasses.dataclass
-class Song:
-    ty: str  # can be "local" or "stream"
-    query: str  # the string passed to Music._play_{ty}
-
 class Music(commands.Cog):
     # Options that are passed to youtube-dl
     _DEFAULT_YTDL_OPTS = {
@@ -138,14 +132,11 @@ class Music(commands.Cog):
             if queue:
                 # Get the next song
                 current = queue.popleft()
-                if isinstance(current, tuple):
-                    ty, query = current
-                    current = Song(ty, query)
                 info["current"] = current
                 # Get an audio source and play it
                 after = lambda error, ctx=ctx: self.schedule(ctx, error)
                 async with ctx.typing():
-                    source, title = await getattr(self, f"_play_{current.ty}")(current.query)
+                    source, title = await getattr(self, f"_play_{current['ty']}")(current['query'])
                     ctx.voice_client.play(source, after=after)
                 await ctx.send(f"Now playing: {title}")
             else:
@@ -211,7 +202,7 @@ class Music(commands.Cog):
         """Plays a file from the local filesystem"""
         info = self.get_info(ctx)
         queue = info["queue"]
-        queue.append(Song("local", query))
+        queue.append({"ty": "local", "query": query})
         if info["current"] is None:
             self.schedule(ctx)
         await ctx.send(f"Added to queue: local {query}")
@@ -226,7 +217,7 @@ class Music(commands.Cog):
         info = self.get_info(ctx)
         queue = info["queue"]
         ty = "local" if url == "coco.mp4" else "stream"
-        queue.append(Song(ty, url))
+        queue.append({"ty": ty, "query": url})
         if info["current"] is None:
             self.schedule(ctx)
         await ctx.send(f"Added to queue: {ty} {url}")
@@ -257,7 +248,7 @@ class Music(commands.Cog):
             url = f"https://www.youtube.com/watch?v={entry['url']}"
             if bracketed:
                 url = f"<{url}>"
-            queue.append(Song("stream", url))
+            queue.append({"ty": "stream", "query": url})
         if info["current"] is None:
             self.schedule(ctx)
         await ctx.send(f"Added playlist to queue: {url}")
@@ -330,7 +321,7 @@ class Music(commands.Cog):
             info = self.get_info(ctx)
             current = info["current"]
             if current is not None and not info["waiting"]:
-                query = current.query
+                query = current["query"]
         await ctx.send(f"Current: {query}")
 
     @commands.command(aliases=["q"])
@@ -352,7 +343,7 @@ class Music(commands.Cog):
             if song is None:
                 paginator.add_line("None")
             else:
-                paginator.add_line(f"{i}: {song.query}")
+                paginator.add_line(f"{i}: {song['query']}")
         for page in paginator.pages:
             await ctx.send(page)
 
@@ -378,7 +369,7 @@ class Music(commands.Cog):
         queue.rotate(-index)
         song = queue.popleft()
         queue.rotate(index)
-        await ctx.send(f"Removed song [{position}]: {song.query}")
+        await ctx.send(f"Removed song [{position}]: {song['query']}")
 
     @commands.command()
     async def move(self, ctx, origin: int, target: int):
@@ -398,7 +389,7 @@ class Music(commands.Cog):
         queue.rotate(origin_index - target_index)
         queue.appendleft(song)
         queue.rotate(target_index)
-        await ctx.send(f"Moved song [{origin} -> {target}]: {song.query}")
+        await ctx.send(f"Moved song [{origin} -> {target}]: {song['query']}")
 
     @commands.command()
     async def clear(self, ctx):
@@ -415,7 +406,7 @@ class Music(commands.Cog):
         current = info["current"]
         ctx.voice_client.stop()
         if current is not None and not info["waiting"]:
-            await ctx.send(f"Skipped: {current.query}")
+            await ctx.send(f"Skipped: {current['query']}")
 
     @commands.command()
     async def loop(self, ctx, loop: typing.Optional[bool] = None):
