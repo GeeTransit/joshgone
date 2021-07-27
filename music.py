@@ -63,31 +63,31 @@ class InfoWrapper:
     # Updates the info to the latest version's format. This calls the _update{version} methods until the latest version is reached.
     def fill(self):
         if not self.defined("version"):
-            self.version = 0
-        while (version := self.version) != self.LATEST_VERSION:
+            self["version"] = 0
+        while (version := self["version"]) != self.LATEST_VERSION:
             getattr(self, f"_update{version}")()
-            if version == self.version:
+            if version == self["version"]:
                 raise TypeError(f"version unchanged: {version}")
 
     # - Update methods
     def _update0(self):
         if not self.defined("queue"):
-            self.queue = deque()
+            self["queue"] = deque()
         if not self.defined("current"):
-            self.current = None
+            self["current"] = None
         if not self.defined("waiting"):
-            self.waiting = False
-        self.version = 1
+            self["waiting"] = False
+        self["version"] = 1
 
     def _update1(self):
         if not self.defined("loop"):
-            self.loop = False
-        self.version = 2
+            self["loop"] = False
+        self["version"] = 2
 
     def _update2(self):
         if not self.defined("processing"):
-            self.processing = False
-        self.version = 3
+            self["processing"] = False
+        self["version"] = 3
 
 class Music(commands.Cog):
     # Options that are passed to youtube-dl
@@ -191,12 +191,12 @@ class Music(commands.Cog):
         info = self.get_info(ctx)
         try:
             # If we are processing it right now...
-            if info.processing:
+            if info["processing"]:
                 # Wait a bit and reschedule it again
                 await asyncio.sleep(1)
                 self.advance_queue.put_nowait(item)
                 return
-            info.processing = True
+            info["processing"] = True
             # If there's an error, send it to the channel
             if error is not None:
                 await ctx.send(f"Player error: {error!r}")
@@ -205,18 +205,18 @@ class Music(commands.Cog):
                 await ctx.send("Not connected to a voice channel anymore")
                 await self.leave(ctx)
                 return
-            queue = info.queue
+            queue = info["queue"]
             # If we're looping, put the current song at the end of the queue
-            if info.loop and info.current is not None:
-                queue.append(info.current)
-            info.current = None
+            if info["loop"] and info["current"] is not None:
+                queue.append(info["current"])
+            info["current"] = None
             if queue:
                 # Get the next song
                 current = queue.popleft()
                 if isinstance(current, tuple):
                     ty, query = current
                     current = Song(ty, query)
-                info.current = current
+                info["current"] = current
                 # Get an audio source and play it
                 after = lambda error, ctx=ctx: self.schedule(ctx, error)
                 async with ctx.typing():
@@ -227,19 +227,19 @@ class Music(commands.Cog):
                 await ctx.send(f"Queue empty")
         except Exception as e:
             await ctx.send(f"Internal Error: {e!r}")
-            info.waiting = False
+            info["waiting"] = False
             await self.skip(ctx)
             self.schedule(ctx)
         finally:
-            info.waiting = False
-            info.processing = False
+            info["waiting"] = False
+            info["processing"] = False
 
     # Schedules advancement of the queue
     def schedule(self, ctx, error=None, *, force=False):
         info = self.get_info(ctx)
-        if force or not info.waiting:
+        if force or not info["waiting"]:
             self.advance_queue.put_nowait((ctx, error))
-            info.waiting = True
+            info["waiting"] = True
 
     # Helper function to create the info for a guild
     def get_info(self, ctx):
@@ -250,7 +250,7 @@ class Music(commands.Cog):
             if not isinstance(info, dict):
                 info = dataclasses.asdict(info)
             for name, value in info.items():
-                setattr(wrapped, name, value)
+                wrapped[name] = value
         wrapped.fill()
         if guild_id in self.infos:
             del self.infos[guild_id]
@@ -261,7 +261,7 @@ class Music(commands.Cog):
         wrapped = InfoWrapper(ctx.guild.id, self.data)
         for name in InfoWrapper.NAMES:
             if wrapped.defined(name):
-                delattr(wrapped, name)
+                del wrapped[name]
         return wrapped
 
     # Creates an audio source from a url
@@ -289,9 +289,9 @@ class Music(commands.Cog):
     async def local(self, ctx, *, query):
         """Plays a file from the local filesystem"""
         info = self.get_info(ctx)
-        queue = info.queue
+        queue = info["queue"]
         queue.append(Song("local", query))
-        if info.current is None:
+        if info["current"] is None:
             self.schedule(ctx)
         await ctx.send(f"Added to queue: local {query}")
 
@@ -303,10 +303,10 @@ class Music(commands.Cog):
         if not url.isprintable():
             raise ValueError(f"url not printable: {url!r}")
         info = self.get_info(ctx)
-        queue = info.queue
+        queue = info["queue"]
         ty = "local" if url == "coco.mp4" else "stream"
         queue.append(Song(ty, url))
-        if info.current is None:
+        if info["current"] is None:
             self.schedule(ctx)
         await ctx.send(f"Added to queue: {ty} {url}")
 
@@ -322,7 +322,7 @@ class Music(commands.Cog):
             bracketed = True
             url = url[1:-1]
         info = self.get_info(ctx)
-        queue = info.queue
+        queue = info["queue"]
         ytdl = youtube_dl.YoutubeDL(self.ytdl_opts | {
             'noplaylist': None,
             'playlistend': None,
@@ -337,7 +337,7 @@ class Music(commands.Cog):
             if bracketed:
                 url = f"<{url}>"
             queue.append(Song("stream", url))
-        if info.current is None:
+        if info["current"] is None:
             self.schedule(ctx)
         await ctx.send(f"Added playlist to queue: {url}")
 
@@ -352,7 +352,7 @@ class Music(commands.Cog):
     async def shuffle(self, ctx):
         """Shuffles the queue"""
         info = self.get_info(ctx)
-        queue = info.queue
+        queue = info["queue"]
         temp = []
         while queue:
             temp.append(queue.popleft())
@@ -407,8 +407,8 @@ class Music(commands.Cog):
         query = None
         if ctx.voice_client is not None:
             info = self.get_info(ctx)
-            current = info.current
-            if current is not None and not info.waiting:
+            current = info["current"]
+            if current is not None and not info["waiting"]:
                 query = current.query
         await ctx.send(f"Current: {query}")
 
@@ -420,9 +420,9 @@ class Music(commands.Cog):
         looping = False
         if ctx.voice_client is not None:
             info = self.get_info(ctx)
-            queue = info.queue
+            queue = info["queue"]
             length = len(queue)
-            looping = info.loop
+            looping = info["loop"]
         if not queue:
             queue = (None,)
         paginator = commands.Paginator()
@@ -449,7 +449,7 @@ class Music(commands.Cog):
     async def remove(self, ctx, position: int):
         """Removes a song on queue"""
         info = self.get_info(ctx)
-        queue = info.queue
+        queue = info["queue"]
         try:
             index = self.normalize_index(ctx, position, len(queue))
         except ValueError:
@@ -463,7 +463,7 @@ class Music(commands.Cog):
     async def move(self, ctx, origin: int, target: int):
         """Moves a song on queue"""
         info = self.get_info(ctx)
-        queue = info.queue
+        queue = info["queue"]
         try:
             origin_index = self.normalize_index(ctx, origin, len(queue))
         except ValueError:
@@ -483,7 +483,7 @@ class Music(commands.Cog):
     async def clear(self, ctx):
         """Clears all songs on queue"""
         info = self.get_info(ctx)
-        queue = info.queue
+        queue = info["queue"]
         queue.clear()
         await ctx.send("Cleared queue")
 
@@ -491,9 +491,9 @@ class Music(commands.Cog):
     async def skip(self, ctx):
         """Skips current song"""
         info = self.get_info(ctx)
-        current = info.current
+        current = info["current"]
         ctx.voice_client.stop()
-        if current is not None and not info.waiting:
+        if current is not None and not info["waiting"]:
             await ctx.send(f"Skipped: {current.query}")
 
     @commands.command()
@@ -501,10 +501,10 @@ class Music(commands.Cog):
         """Gets or sets queue looping"""
         info = self.get_info(ctx)
         if loop is None:
-            await ctx.send(f"Queue {'is' if info.loop else 'is not'} looping")
+            await ctx.send(f"Queue {'is' if info['loop'] else 'is not'} looping")
             return
-        info.loop = loop
-        await ctx.send(f"Queue {'is now' if info.loop else 'is now not'} looping")
+        info["loop"] = loop
+        await ctx.send(f"Queue {'is now' if info['loop'] else 'is now not'} looping")
 
     @commands.command()
     @commands.is_owner()
