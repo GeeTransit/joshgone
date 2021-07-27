@@ -15,17 +15,19 @@ import youtube_dl
 
 import patched_player
 
+# Holds a song request
 @dataclasses.dataclass
 class Song:
-    ty: str
-    query: str
+    ty: str  # can be "local" or "stream"
+    query: str  # the string passed to Music._play_{ty}
 
+# Wraps the info for a guild with __get/set/delattr__ methods
 @dataclasses.dataclass
 class InfoWrapper:
-    id: int
-    data: dict = dataclasses.field(repr=False)
-    LATEST_VERSION: typing.ClassVar[int] = 3
-    NAMES: typing.ClassVar[int] = "queue current waiting version loop processing".split()
+    id: int  # guild id
+    data: dict = dataclasses.field(repr=False)  # bot._music_data
+    LATEST_VERSION: typing.ClassVar[int] = 3  # version to upgrade to
+    NAMES: typing.ClassVar[int] = "queue current waiting version loop processing".split()  # all attributes needed
 
     def __getattr__(self, name):
         try:
@@ -35,22 +37,27 @@ class InfoWrapper:
 
     def __setattr__(self, name, value):
         if name in ("id", "data"):
+            # This is special cased or else it would assign it to the data dict
             super().__setattr__(name, value)
         else:
             self.data[name][self.id] = value
 
     def __delattr__(self, name):
         if name in ("id", "data"):
+            # Special cased for the same reason as in __setattr__
             super().__delattr__(name)
         else:
             del self.data[name][self.id]
 
+    # Returns a dict with all info for debugging purposes. Modifying this dict won't update the data dict
     def to_dict(self):
         return {name: getattr(self, name) for name in self.NAMES}
 
+    # Returns whether the name is in the data dict
     def defined(self, name):
         return self.id in self.data[name]
 
+    # Updates the info to the latest version's format. This calls the _update{version} methods until the latest version is reached.
     def fill(self):
         if not self.defined("version"):
             self.version = 0
@@ -59,6 +66,7 @@ class InfoWrapper:
             if version == self.version:
                 raise TypeError(f"version unchanged: {version}")
 
+    # - Update methods
     def _update0(self):
         if not self.defined("queue"):
             self.queue = deque()
@@ -79,6 +87,7 @@ class InfoWrapper:
         self.version = 3
 
 class Music(commands.Cog):
+    # Options that are passed to youtube-dl
     _DEFAULT_YTDL_OPTS = {
         'format': 'bestaudio/best',
         'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
@@ -93,6 +102,7 @@ class Music(commands.Cog):
         'default_search': 'auto',
         'source_address': '0.0.0.0', # bind to ipv4 since ipv6 addresses cause issues sometimes
     }
+    # Options passed to FFmpeg
     _DEFAULT_FFMPEG_OPTS = {
         'options': '-vn',
         # Source: https://stackoverflow.com/questions/66070749/
@@ -101,8 +111,10 @@ class Music(commands.Cog):
 
     def __init__(self, bot, *, ytdl_opts=_DEFAULT_YTDL_OPTS, ffmpeg_opts=_DEFAULT_FFMPEG_OPTS):
         self.bot = bot
+        # Options are stores on the instance in case they need to be changed
         self.ytdl_opts = ytdl_opts
         self.ffmpeg_opts = ffmpeg_opts
+        # Data is persistent between extension reloads
         if not hasattr(bot, "_music_info"):
             bot._music_info = {}
         if not hasattr(bot, "_music_data"):
@@ -112,19 +124,27 @@ class Music(commands.Cog):
         self.infos = bot._music_info
         self.data = bot._music_data
         self.advance_queue = bot._music_advance_queue
+        # Start the advancer's auto-restart task
         self.advance_task = None
         self.advancer.start()
+        # Ensure all attributes exist in the data dict
         for name in InfoWrapper.NAMES:
             if name not in self.data:
                 self.data[name] = {}
 
+    # Cancel just the advancer and the auto-restart tasks
     def cog_unload(self):
         self.advancer.cancel()
 
+    # - Song players
+    # Returns a source object and the title of the song
+
+    # Finds a file using query. Title is query
     async def _play_local(self, query):
         source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
         return source, query
 
+    # Searches various sites using url. Title is data["title"] or url
     async def _play_stream(self, url):
         original_url = url
         if url[0] == "<" and url[-1] == ">":
@@ -132,6 +152,7 @@ class Music(commands.Cog):
         player, data = await self.player_from_url(url, stream=True)
         return player, data.get("title", original_url)
 
+    # Auto-restart task for the advancer task
     @tasks.loop(seconds=15)
     async def advancer(self):
         if self.advance_task is not None and self.advance_task.done():
@@ -146,6 +167,8 @@ class Music(commands.Cog):
         if self.advance_task is None:
             self.advance_task = asyncio.create_task(self.handle_advances(), name="music_advancer")
 
+    # Cancel the advancer task if the monitoring task is getting cancelled
+    # (such as when the cog is getting unloaded)
     @advancer.after_loop
     async def on_advancer_cancel(self):
         if self.advancer.is_being_cancelled():
@@ -153,36 +176,45 @@ class Music(commands.Cog):
                 self.advance_task.cancel()
                 self.advance_task = None
 
+    # The advancer task loop
     async def handle_advances(self):
         while True:
             item = await self.advance_queue.get()
             asyncio.create_task(self.handle_advance(item))
 
+    # The actual music advancing logic
     async def handle_advance(self, item):
         ctx, error = item
         info = self.get_info(ctx)
         try:
+            # If we are processing it right now...
             if info.processing:
+                # Wait a bit and reschedule it again
                 await asyncio.sleep(1)
                 self.advance_queue.put_nowait(item)
                 return
             info.processing = True
+            # If there's an error, send it to the channel
             if error is not None:
                 await ctx.send(f"Player error: {error!r}")
+            # If we aren't connected anymore, notify and leave
             if ctx.voice_client is None:
                 await ctx.send("Not connected to a voice channel anymore")
                 await self.leave(ctx)
                 return
             queue = info.queue
+            # If we're looping, put the current song at the end of the queue
             if info.loop and info.current is not None:
                 queue.append(info.current)
             info.current = None
             if queue:
+                # Get the next song
                 current = queue.popleft()
                 if isinstance(current, tuple):
                     ty, query = current
                     current = Song(ty, query)
                 info.current = current
+                # Get an audio source and play it
                 after = lambda error, ctx=ctx: self.schedule(ctx, error)
                 async with ctx.typing():
                     source, title = await getattr(self, f"_play_{current.ty}")(current.query)
@@ -199,12 +231,14 @@ class Music(commands.Cog):
             info.waiting = False
             info.processing = False
 
+    # Schedules advancement of the queue
     def schedule(self, ctx, error=None, *, force=False):
         info = self.get_info(ctx)
         if force or not info.waiting:
             self.advance_queue.put_nowait((ctx, error))
             info.waiting = True
 
+    # Helper function to create the info for a guild
     def get_info(self, ctx):
         guild_id = ctx.guild.id
         wrapped = InfoWrapper(guild_id, self.data)
@@ -219,6 +253,7 @@ class Music(commands.Cog):
             del self.infos[guild_id]
         return wrapped
 
+    # Helper function to remove the info for a guild
     def pop_info(self, ctx):
         wrapped = InfoWrapper(ctx.guild.id, self.data)
         for name in InfoWrapper.NAMES:
@@ -226,6 +261,7 @@ class Music(commands.Cog):
                 delattr(wrapped, name)
         return wrapped
 
+    # Creates an audio source from a url
     async def player_from_url(self, url, *, loop=None, stream=False):
         ytdl = youtube_dl.YoutubeDL(self.ytdl_opts)
         loop = loop or asyncio.get_running_loop()
