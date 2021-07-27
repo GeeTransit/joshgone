@@ -241,7 +241,13 @@ class Music(commands.Cog):
     def get_info(self, ctx):
         guild_id = ctx.guild.id
         wrapped = InfoWrapper(guild_id, self.data)
-        wrapped.fill()
+        if "queue" not in wrapped:
+            wrapped["queue"] = deque()
+            wrapped["current"] = None
+            wrapped["waiting"] = False
+            wrapped["loop"] = False
+            wrapped["processing"] = False
+            wrapped["version"] = 3
         return wrapped
 
     # Helper function to remove the info for a guild
