@@ -14,7 +14,9 @@ intents = discord.Intents.default()
 intents.members = True
 
 # Our prefix is % or @joshgone
-bot = commands.Bot(command_prefix=commands.when_mentioned_or("%"), intents=intents)
+command_prefix = commands.when_mentioned_or("%")
+
+bot = commands.Bot(command_prefix=command_prefix, intents=intents)
 
 # Load extensions
 for module in LOAD_ON_STARTUP:
