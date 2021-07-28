@@ -17,24 +17,11 @@ intents.members = True
 # Our prefix is % or @joshgone
 bot = commands.Bot(command_prefix=commands.when_mentioned_or("%"), intents=intents)
 
-# Global variable to make sure extensions aren't initialized twice
-started = False
-
 @bot.event
 async def on_ready():
-    global started
     # Some debug info
     print(f"JoshGone logged on as {bot.user}.")
     print(f"SQLite version is {aiosqlite.sqlite_version}.")
-    # Check if extensions are already initialized
-    if started:
-        return
-    started = True
-    # Load extensions
-    for module in LOAD_ON_STARTUP:
-        bot.load_extension(module)
-        print(f"Loaded {module}")
-    print(f"All extensions loaded: [{', '.join(LOAD_ON_STARTUP)}]")
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -46,6 +33,12 @@ async def on_command_error(ctx, error):
     except Exception:
         print(f"Error: {error!r}")
         raise
+
+# Load extensions
+for module in LOAD_ON_STARTUP:
+    bot.load_extension(module)
+    print(f"Loaded {module}")
+print(f"All extensions loaded: [{', '.join(LOAD_ON_STARTUP)}]")
 
 # A separate extension handles the REPL
 bot.load_extension("repl")
