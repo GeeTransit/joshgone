@@ -7,7 +7,7 @@ from discord.ext import commands
 # These extensions are loaded automatically on startup
 LOAD_ON_STARTUP = '''
     admin censor chant music database thicc gee remind split get relay solver
-    sort
+    sort repl
 '''.split()
 
 # We need intents to resolve a name to a Member object
@@ -39,8 +39,5 @@ for module in LOAD_ON_STARTUP:
     bot.load_extension(module)
     print(f"Loaded {module}")
 print(f"All extensions loaded: [{', '.join(LOAD_ON_STARTUP)}]")
-
-# A separate extension handles the REPL
-bot.load_extension("repl")
 
 bot.run(os.environ["JOSHGONE_TOKEN"])
