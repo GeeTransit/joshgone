@@ -16,7 +16,7 @@ intents.members = True
 # Our prefix is % or @joshgone
 command_prefix = commands.when_mentioned_or("%")
 
-def run(**bot_kwargs):
+def run(token, **bot_kwargs):
     bot = commands.Bot(**bot_kwargs)
 
     # Load extensions
@@ -25,7 +25,11 @@ def run(**bot_kwargs):
         print(f"Loaded {module}")
     print(f"All extensions loaded: [{', '.join(LOAD_ON_STARTUP)}]")
 
-    bot.run(os.environ["JOSHGONE_TOKEN"])
+    bot.run(token)
 
 if __name__ == "__main__":
-    run(command_prefix=command_prefix, intents=intents)
+    run(
+        os.environ["JOSHGONE_TOKEN"],
+        command_prefix=command_prefix,
+        intents=intents,
+    )
