@@ -10,6 +10,7 @@ import queue
 import threading
 import os
 import sys
+import shlex
 from collections import deque
 
 import discord
@@ -245,12 +246,14 @@ class Music(commands.Cog):
         url = f"{self.ONLINE_SEQUENCER_URL_PREFIX}{id_}"
         note_infos = await os_note_infos.get_note_infos(url)
         # Start another process to convert these into a sound
+        executable, *args = shlex.split(self.os_python_executable)
         process = await asyncio.to_thread(
             lambda: s.create_ffmpeg_process(
+                *args,
                 "online_sequencer_make_chunks.py",
                 "--settings", f"{self.os_directory}/settings.json",
                 "--template", f"{self.os_directory}/<>.ogg",
-                executable=self.os_python_executable,
+                executable=executable,
                 pipe_stdin=True,
                 pipe_stdout=True,
             )
