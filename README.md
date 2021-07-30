@@ -88,3 +88,33 @@ python joshgone.py
 python3 joshgone.py
 ```
 
+## Online Sequencer
+
+*Note: This is very experimental.*
+
+For playing music from Online Sequencer to work, you need to install from `requirements-os.txt` instead of `requirements.txt`. This file includes [Playwright](https://playwright.dev/) which we use to get the sequence's notes. This also means we need to run playwright's installation step too. Run the following in the virtual environment:
+
+```sh
+# On Windows
+pip install -r requirements-os.txt
+playwright install
+# On Linux
+pip3 install -r requirements-os.txt
+playwright install
+```
+
+Next, run the following command in the virtual environment. This will download the instrument settings and the audio file for each instrument into a directory named oscollection.
+
+```sh
+# On Windows
+python online_sequencer_download.py oscollection
+# On Linux
+python3 online_sequencer_download.py oscollection
+```
+
+If you want to use a different directory name, replace oscollection with the different name in the command, and set the JOSHGONE_OS_DIRECTORY environment variable to the different name.
+
+### PyPy
+
+[PyPy](https://www.pypy.org/) can significantly reduce lag in processing the sequence. If you have it installed, you can set the JOSHGONE_OS_PY_EXE environment variable to a different Python executable, such as `pypy3`, to run `online_sequencer_make_chunks.py` with.
+
