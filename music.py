@@ -9,6 +9,7 @@ import json
 import queue
 import threading
 import os
+import sys
 from collections import deque
 
 import discord
@@ -52,7 +53,15 @@ class Music(commands.Cog):
 
     ONLINE_SEQUENCER_URL_PREFIX = "https://onlinesequencer.net/"
 
-    def __init__(self, bot, *, ytdl_opts=_DEFAULT_YTDL_OPTS, ffmpeg_opts=_DEFAULT_FFMPEG_OPTS, os_python_executable=None):
+    def __init__(
+        self,
+        bot,
+        *,
+        ytdl_opts=_DEFAULT_YTDL_OPTS,
+        ffmpeg_opts=_DEFAULT_FFMPEG_OPTS,
+        os_python_executable=None,
+        os_directory=None,
+    ):
         self.bot = bot
         # Options are stores on the instance in case they need to be changed
         self.ytdl_opts = ytdl_opts
@@ -74,6 +83,13 @@ class Music(commands.Cog):
                 "python",  # We default back to using plain old Python
             )
         self.os_python_executable = os_python_executable
+        # The directory with the Online Sequencer instrument settings and audio
+        if os_directory is None:
+            os_directory = os.environ.get(
+                "JOSHGONE_OS_DIRECTORY",
+                "oscollection",
+            )
+        self.os_directory = os_directory
 
     # Cancel just the advancer and the auto-restart tasks
     def cog_unload(self):
@@ -232,8 +248,8 @@ class Music(commands.Cog):
         process = await asyncio.to_thread(
             lambda: s.create_ffmpeg_process(
                 "online_sequencer_make_chunks.py",
-                "--settings", "oscollection/settings.json",
-                "--template", "oscollection/<>.ogg",
+                "--settings", f"{self.os_directory}/settings.json",
+                "--template", f"{self.os_directory}/<>.ogg",
                 executable=self.os_python_executable,
                 pipe_stdin=True,
                 pipe_stdout=True,
