@@ -80,7 +80,7 @@ class Music(commands.Cog):
         if os_python_executable is None:
             os_python_executable = os.environ.get(
                 "JOSHGONE_OS_PY_EXE",
-                "python",  # We default back to using plain old Python
+                sys.executable,  # We default to using the current Python
             )
         self.os_python_executable = os_python_executable
         # The directory with the Online Sequencer instrument settings and audio
