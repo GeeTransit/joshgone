@@ -1,0 +1,5 @@
+-r requirements.txt
+greenlet==1.1.0
+playwright==1.13.0
+pyee==8.1.0
+websockets==9.1
