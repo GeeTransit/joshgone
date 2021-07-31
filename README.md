@@ -116,5 +116,27 @@ If you want to use a different directory name, replace oscollection with the dif
 
 ### PyPy
 
-[PyPy](https://www.pypy.org/) can significantly reduce lag in processing the sequence. If you have it installed, you can set the JOSHGONE_OS_PY_EXE environment variable to a different Python executable, such as `pypy3`, to run `online_sequencer_make_chunks.py` with.
+[PyPy](https://www.pypy.org/) can significantly reduce lag in processing the sequence. If you have it installed, you can set the JOSHGONE_OS_PY_EXE environment variable to a different Python executable to run `online_sequencer_make_chunks.py` with.
+
+Note that the script requires some libraries, meaning you'll need a virtual environment for PyPy. You can write a script for your platform, but my suggestion is to use [pew](https://github.com/berdario/pew), a cross platform wrapper around virtual environments. You can install it using one of the following commands (more info on pipx [here](https://pypa.github.io/pipx/)):
+
+```sh
+# On Windows
+pip install pew
+# On Linux
+pip3 install pew
+# With pipx
+pipx install pew
+```
+
+You can then initialize a PyPy virtual environment by running the following:
+
+```sh
+# Create a new virtual environment using PyPy (-p pypy3) and don't enter it (-d)
+pew new joshgone-pypy -p pypy3 -d
+# Install packages in the virtual environment
+pew in joshgone-pypy python -m pip install -r requirements.txt
+```
+
+You can then set JOSHGONE_OS_PY_EXE to `pew in joshgone-pypy pypy3` for it to run PyPy inside the virtual environment, where it can access the libraries it needs.
 
