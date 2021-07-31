@@ -11,6 +11,7 @@ pycparser==2.20
 PyNaCl==1.4.0
 simpleeval==0.9.10
 six==1.15.0
+soundit==0.1
 sqlparse==0.4.1
 tabulate==0.8.7
 typing-extensions==3.7.4.3

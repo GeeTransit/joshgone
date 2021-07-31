@@ -2,7 +2,7 @@ import argparse
 import sys
 import json
 
-import sound as s
+import soundit as s
 
 def make_chunks(infos, **kwargs):
     """Generate chunks from note infos"""

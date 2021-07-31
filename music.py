@@ -20,7 +20,7 @@ from discord.ext import tasks
 import youtube_dl
 
 import patched_player
-import sound as s
+import soundit as s
 
 try:
     import online_sequencer_get_note_infos as os_note_infos
