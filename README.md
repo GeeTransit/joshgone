@@ -135,7 +135,7 @@ You can then initialize a PyPy virtual environment by running the following:
 # Create a new virtual environment using PyPy (-p pypy3) and don't enter it (-d)
 pew new joshgone-pypy -p pypy3 -d
 # Install packages in the virtual environment
-pew inraw joshgone-pypy pip install -r requirements.txt
+pew inraw joshgone-pypy pip install -r requirements-soundit.txt
 ```
 
 You can then set JOSHGONE_OS_PY_EXE to `pew inraw joshgone-pypy pypy3` for it to run PyPy inside the virtual environment, where it can access the libraries it needs.
