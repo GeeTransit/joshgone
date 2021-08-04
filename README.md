@@ -46,7 +46,7 @@ JoshGone takes all configuration using environment variables. Here's a table wit
 | -------------- | ------------------------------------------------------------ |
 | JOSHGONE_TOKEN | Discord bot user's token. Should be around 59 characters long and look random. |
 | JOSHGONE_DB    | SQLite database location. Set it to `joshgone.db`.           |
-| JOSHGONE_REPL  | If the value is nonempty, there will be a REPL after the bot starts. |
+| JOSHGONE_REPL  | Optional. Can be `0` (default) or `1`. If it is `1`, there will be a REPL after the bot starts. |
 
 You can get your Discord bot user's token by going to [your dashboard](https://discord.com/developers/applications), clicking on your application, clicking *Bot* in the left sidebar, and pressing the *Copy* button under *Token* in the *Build-A-Bot* section.
 

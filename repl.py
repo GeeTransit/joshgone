@@ -46,7 +46,7 @@ async def _init_repl():
     global thread
     if thread is not None:
         return
-    if not os.environ.get("JOSHGONE_REPL"):
+    if not int(os.environ.get("JOSHGONE_REPL", "0")):
         return
     variables = globals()
     loop = asyncio_main.loop = asyncio.get_running_loop()
