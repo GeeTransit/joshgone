@@ -1,6 +1,5 @@
 import asyncio
 import asyncio.__main__ as asyncio_main
-import os
 
 # Imported so the REPL can use them
 import discord
@@ -45,8 +44,6 @@ thread = None
 async def _init_repl():
     global thread
     if thread is not None:
-        return
-    if not int(os.environ.get("JOSHGONE_REPL", "0")):
         return
     variables = globals()
     loop = asyncio_main.loop = asyncio.get_running_loop()
