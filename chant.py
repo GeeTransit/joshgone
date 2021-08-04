@@ -241,6 +241,19 @@ class Chant(commands.Cog):
     async def _remove(self, ctx, name: str):
         """Remove a chant"""
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+            # Check if user can actually change it
+            async with db.execute("SELECT owner_id FROM chants WHERE server_id = ? AND chant_name = ? LIMIT 1;", (ctx.guild.id, name)) as cursor:
+                row = await cursor.fetchone()
+                if row is None:
+                    current = None
+                else:
+                    current = row[0]
+            # If there's already an owner, make sure they are allowed to change it
+            if current is not None:
+                if ctx.author.id not in (self.bot.owner_id, ctx.guild.owner_id, current):
+                    await ctx.send("You are not allowed to change this chant's owner")
+                    return
+            # Delete the chant
             await db.execute("DELETE FROM chants WHERE server_id = ? AND chant_name = ?;", (ctx.guild.id, name))
             await db.commit()
         await ctx.send(f"Removed chant {name}")
