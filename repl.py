@@ -13,6 +13,10 @@ import warnings
 
 class REPLNoStopThread(asyncio_main.REPLThread):
 
+    def __init__(self, console):
+        super().__init__()
+        self.console = console
+
     def run(self):
         try:
             banner = (
@@ -23,7 +27,7 @@ class REPLNoStopThread(asyncio_main.REPLThread):
                 f'{getattr(sys, "ps1", ">>> ")}import asyncio'
             )
 
-            asyncio_main.console.interact(
+            self.console.interact(
                 banner=banner,
                 exitmsg='exiting asyncio REPL...')
         finally:
@@ -37,22 +41,25 @@ class REPLNoStopThread(asyncio_main.REPLThread):
             # loop.call_soon_threadsafe(loop.stop)
 
 
-# Global variable to make sure the REPL isn't initialized twice
-thread = None
+class Repl(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.thread = None
 
-# Starts the REPL using asyncio's code
-async def _init_repl():
-    global thread
-    if thread is not None:
-        return
-    variables = globals()
-    loop = asyncio_main.loop = asyncio.get_running_loop()
-    asyncio_main.console = asyncio_main.AsyncIOInteractiveConsole(variables, loop)
-    asyncio_main.repl_future_interrupted = False
-    asyncio_main.repl_future = None
-    thread = REPLNoStopThread()
-    thread.daemon = True
-    thread.start()
+    @commands.Cog.listener()
+    async def on_ready(self):
+        # Make sure the REPL isn't initialized twice
+        if self.thread is not None:
+            return
+        # Starts the REPL using asyncio's code
+        variables = globals()
+        loop = asyncio_main.loop = asyncio.get_running_loop()
+        asyncio_main.console = asyncio_main.AsyncIOInteractiveConsole(variables, loop)
+        asyncio_main.repl_future_interrupted = False
+        asyncio_main.repl_future = None
+        self.thread = REPLNoStopThread(asyncio_main.console)
+        self.thread.daemon = True
+        self.thread.start()
 
 # Utility method to send a message that will be processed using `process`
 async def self_process(text_channel, content):
@@ -72,4 +79,4 @@ async def process(message):
 def setup(_bot):
     global bot
     bot = _bot
-    bot.add_listener(_init_repl, "on_ready")
+    bot.add_cog(Repl(bot))
