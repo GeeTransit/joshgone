@@ -6,6 +6,38 @@ import os
 import discord
 from discord.ext import commands
 
+
+# Subclass of REPLThread that doesn't stop the loop (joshgone.py handles that)
+# Adapted from: Python39/Lib/asyncio/__main__.py
+import sys
+import warnings
+
+class REPLNoStopThread(asyncio_main.REPLThread):
+
+    def run(self):
+        try:
+            banner = (
+                f'asyncio REPL {sys.version} on {sys.platform}\n'
+                f'Use "await" directly instead of "asyncio.run()".\n'
+                f'Type "help", "copyright", "credits" or "license" '
+                f'for more information.\n'
+                f'{getattr(sys, "ps1", ">>> ")}import asyncio'
+            )
+
+            asyncio_main.console.interact(
+                banner=banner,
+                exitmsg='exiting asyncio REPL...')
+        finally:
+            warnings.filterwarnings(
+                'ignore',
+                message=r'^coroutine .* was never awaited$',
+                category=RuntimeWarning)
+
+            # The main thread will stop it. Otherwise, this chokes the cleanup
+            # code in discord.py.
+            # loop.call_soon_threadsafe(loop.stop)
+
+
 # Global variable to make sure the REPL isn't initialized twice
 thread = None
 
@@ -21,7 +53,7 @@ async def _init_repl():
     asyncio_main.console = asyncio_main.AsyncIOInteractiveConsole(variables, loop)
     asyncio_main.repl_future_interrupted = False
     asyncio_main.repl_future = None
-    thread = asyncio_main.REPLThread()
+    thread = REPLNoStopThread()
     thread.daemon = True
     thread.start()
 
