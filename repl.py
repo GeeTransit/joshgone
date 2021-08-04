@@ -72,5 +72,7 @@ async def process(message):
     finally:
         bot._skip_check = old_skip_check
 
-def setup(bot):
+def setup(_bot):
+    global bot
+    bot = _bot
     bot.add_listener(_init_repl, "on_ready")
