@@ -58,9 +58,13 @@ def run(token, **bot_kwargs):
     finally:
         loop.close()
 
-if __name__ == "__main__":
+def main():
+    """Entry point to run JoshGone"""
     run(
         os.environ["JOSHGONE_TOKEN"],
         command_prefix=command_prefix,
         intents=intents,
     )
+
+if __name__ == "__main__":
+    main()
