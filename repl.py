@@ -6,6 +6,61 @@ import discord
 from discord.ext import commands
 
 
+# Subclass of AsyncIOInteractiveConsole that doesn't use globals
+import types
+import inspect
+import concurrent.futures
+import asyncio.futures
+
+class AsyncIOInteractiveConsole(asyncio_main.AsyncIOInteractiveConsole):
+
+    def __init__(self, locals, loop):
+        super().__init__(locals, loop)
+        self.future = None
+        self.interrupted = False
+
+    def runcode(self, code):
+        future = concurrent.futures.Future()
+
+        def callback():
+            self.future = None
+            self.interrupted = False
+
+            func = types.FunctionType(code, self.locals)
+            try:
+                coro = func()
+            except SystemExit:
+                raise
+            except KeyboardInterrupt as ex:
+                self.interrupted = True
+                future.set_exception(ex)
+                return
+            except BaseException as ex:
+                future.set_exception(ex)
+                return
+
+            if not inspect.iscoroutine(coro):
+                future.set_result(coro)
+                return
+
+            try:
+                self.future = self.loop.create_task(coro)
+                asyncio.futures._chain_future(self.future, future)
+            except BaseException as exc:
+                future.set_exception(exc)
+
+        self.loop.call_soon_threadsafe(callback)
+
+        try:
+            return future.result()
+        except SystemExit:
+            raise
+        except BaseException:
+            if self.interrupted:
+                self.write("\nKeyboardInterrupt\n")
+            else:
+                self.showtraceback()
+
 # Subclass of REPLThread that doesn't stop the loop (joshgone.py handles that)
 # Adapted from: Python39/Lib/asyncio/__main__.py
 import sys
@@ -54,10 +109,8 @@ class Repl(commands.Cog):
         # Starts the REPL using asyncio's code
         variables = globals()
         loop = asyncio_main.loop = asyncio.get_running_loop()
-        asyncio_main.console = asyncio_main.AsyncIOInteractiveConsole(variables, loop)
-        asyncio_main.repl_future_interrupted = False
-        asyncio_main.repl_future = None
-        self.thread = REPLNoStopThread(asyncio_main.console)
+        console = AsyncIOInteractiveConsole(variables, loop)
+        self.thread = REPLNoStopThread(console)
         self.thread.daemon = True
         self.thread.start()
 
