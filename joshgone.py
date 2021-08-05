@@ -4,10 +4,10 @@ import discord
 from discord.ext import commands
 
 # These extensions are loaded automatically on startup
-LOAD_ON_STARTUP = '''
-    admin censor chant music database thicc gee remind split get relay solver
-    sort info
-'''.split()
+LOAD_ON_STARTUP = (
+    "admin", "censor", "chant", "music", "database", "thicc", "gee", "remind",
+    "split", "get", "relay", "solver", "sort", "info",
+)
 
 # We need intents to resolve a name to a Member object
 intents = discord.Intents.default()
@@ -49,9 +49,9 @@ def run(token, **bot_kwargs):
     loop = _run(token, **bot_kwargs)
 
     # Waits a little bit before closing the loop so objects that use
-    # loop.call_soon in their .__del__ methods can be garbage collected
-    # without giving an annoying `Exception ignored in <something>
-    # RuntimeError: Event loop is closed`.
+    # loop.call_soon in their .__del__ methods can be garbage collected without
+    # giving an annoying `Exception ignored in <something> RuntimeError: Event
+    # loop is closed`.
     try:
         loop.call_later(0.1, loop.stop)
         loop.run_forever()
