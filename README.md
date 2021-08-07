@@ -24,7 +24,7 @@ To enter the virtual environment, run the following. To leave the virtual enviro
 
 ```sh
 # On Windows
-.venv\Scripts\activate.bat
+call .venv\Scripts\activate.bat
 # On Linux
 source .venv/bin/activate
 ```
