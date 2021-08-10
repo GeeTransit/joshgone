@@ -62,7 +62,7 @@ class Admin(commands.Cog):
         await ctx.send("Shutting bot shut down.")
         await self.bot.close()
 
-    @commands.command(hidden=True)
+    @commands.command(aliases=["%"], hidden=True)
     async def exec(self, ctx, *, text):
         """Executes some code
 
