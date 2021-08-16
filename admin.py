@@ -62,8 +62,8 @@ class Admin(commands.Cog):
         await ctx.send("Shutting bot shut down.")
         await self.bot.close()
 
-    @commands.command(aliases=["%"], hidden=True)
-    async def exec(self, ctx, *, text):
+    @commands.command(hidden=True)
+    async def execold(self, ctx, *, text):
         """Executes some code
 
         The code needs to be approved by the bot owner to be run.
