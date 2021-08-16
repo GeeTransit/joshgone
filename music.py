@@ -120,6 +120,14 @@ class Music(commands.Cog):
         source = await self._create_os_source(url)
         return source, original_url
 
+    # Returns the raw source (calling the function if possible)
+    async def _play_raw(self, source):
+        if callable(source):
+            source = source()
+        if not isinstance(source, discord.AudioSource):
+            source = s.wrap_discord_source(s.chunked(source))
+        return source, repr(source)
+
     # Auto-restart task for the advancer task
     @tasks.loop(seconds=15)
     async def advancer(self):
@@ -389,6 +397,19 @@ class Music(commands.Cog):
             if info["current"] is None:
                 self.schedule(ctx)
             await ctx.send(f"Added to queue: os {url}")
+
+    async def add_to_queue(self, ctx, source):
+        """Plays the specified source"""
+        if ctx.voice_client is None:
+            if ctx.author.voice:
+                await ctx.author.voice.channel.connect()
+            else:
+                raise RuntimeError("Author not connected to a voice channel")
+        info = self.get_info(ctx)
+        queue = info["queue"]
+        queue.append({"ty": "raw", "query": source})
+        if info["current"] is None:
+            self.schedule(ctx)
 
     @commands.command()
     async def _add_playlist(self, ctx, *, url):
