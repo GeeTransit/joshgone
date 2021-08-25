@@ -169,7 +169,13 @@ class Exec(commands.Cog):
             "cog": self,
             "help": self.helps,
             "reload": self.reload,
+            "message": ctx.message,
+            "author": ctx.author,
+            "channel": ctx.channel,
         }
+        if ctx.guild is not None:
+            # A guild doesn't exist when in a DM
+            variables["guild"] = ctx.guild
         if hasattr(self, "result"):
             variables["_"] = self.result
         try:
