@@ -169,6 +169,8 @@ class Exec(commands.Cog):
             "ctx": ctx,
             "cog": self,
             "_": self.result,
+            "help": self.helps,
+            "reload": self.reload,
         }
         try:
             # Compile and get a list of statements
