@@ -5,6 +5,8 @@ Adapted from ULHack Bot's cogs/exec.py
 """
 import asyncio
 import ast
+import functools
+import pydoc
 
 import discord
 from discord.ext import commands
@@ -24,6 +26,18 @@ class Exec(commands.Cog):
                 "discord": discord,
                 "commands": commands,
             }
+
+    @staticmethod
+    @functools.wraps(pydoc.render_doc)
+    def helps(*args, **kwargs):
+        stack = []
+        for char in pydoc.render_doc(*args, **kwargs):
+            if char == "\b":
+                if stack:
+                    stack.pop()
+                continue
+            stack.append(char)
+        return "".join(stack)
 
     @staticmethod
     def reload(name):
