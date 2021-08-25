@@ -150,6 +150,12 @@ class Exec(commands.Cog):
         if not await self.bot.is_owner(ctx.author):
             if not await self.wait_approval(ctx.message):
                 return
+        # Dictionary of locals for the script
+        variables = {
+            "ctx": ctx,
+            "cog": self,
+            "_": self.result,
+        }
         try:
             # Compile and get a list of statements
             body = ast.parse(text).body
@@ -162,14 +168,14 @@ class Exec(commands.Cog):
             func = self.wrap_ast(
                 body,
                 scope=self.bot.scope,
-                header="async def ____thingy(ctx, cog, _): pass",
+                header=f"async def ____thingy({', '.join(variables)}): pass",
                 filename="<discordexec>",
             )
         except Exception as e:
             raise RuntimeError(f"Error preparing code: {e!r}") from e
         try:
             # Await and send its result
-            result = await func(ctx, self, self.result)
+            result = await func(**variables)
         except Exception as e:
             import traceback
             traceback.print_exc()
