@@ -185,7 +185,16 @@ class Exec(commands.Cog):
         else:
             if result is not None:
                 self.result = result
-                await ctx.send(content=str(result) or "*Empty string*")
+                content = str(result)
+                if len(content) > 30000:
+                    raise ValueError("Result too long for output")
+                paginator = commands.Paginator(prefix="", suffix="")
+                for line in content.splitlines():
+                    paginator.add_line(line)
+                if len(paginator.pages) > 20:
+                    raise ValueError("Result too long for output")
+                for page in paginator.pages:
+                    await ctx.send(page.strip() or "*Empty string*")
             else:
                 await ctx.send("*Finished*")
 
