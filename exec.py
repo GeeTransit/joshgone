@@ -14,7 +14,6 @@ from discord.ext import commands
 class Exec(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.result = None
 
     def ensure_scope(self):
         # Ensures that the bot has an execution scope
@@ -168,10 +167,11 @@ class Exec(commands.Cog):
         variables = {
             "ctx": ctx,
             "cog": self,
-            "_": self.result,
             "help": self.helps,
             "reload": self.reload,
         }
+        if hasattr(self, "result"):
+            variables["_"] = self.result
         try:
             # Compile and get a list of statements
             body = ast.parse(text).body
