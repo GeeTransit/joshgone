@@ -212,7 +212,8 @@ class Exec(commands.Cog):
                     raise ValueError("Result too long for output")
                 paginator = commands.Paginator(prefix="", suffix="")
                 for line in content.splitlines():
-                    paginator.add_line(line)
+                    for start in range(0, len(line), 1950):
+                        paginator.add_line(line[start : start+1950])
                 if len(paginator.pages) > 20:
                     raise ValueError("Result too long for output")
                 for page in paginator.pages:
