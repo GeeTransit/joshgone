@@ -176,6 +176,8 @@ class Exec(commands.Cog):
         try:
             # Await and send its result
             result = await func(**variables)
+            if asyncio.iscoroutine(result):
+                result = await result
         except Exception as e:
             import traceback
             traceback.print_exc()
