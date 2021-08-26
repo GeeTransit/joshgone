@@ -29,7 +29,7 @@ def _run(token, **bot_kwargs):
 
     # Load extensions
     for module in extensions:
-        bot.load_extension(module)
+        bot.load_extension(f"extensions.{module}")
         print(f"Loaded {module}")
     print(f"All extensions loaded: [{', '.join(extensions)}]")
 
