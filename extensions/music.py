@@ -17,7 +17,7 @@ import discord
 from discord.ext import commands
 from discord.ext import tasks
 
-import youtube_dl
+import yt_dlp as youtube_dl
 
 import patched_player
 import soundit as s
