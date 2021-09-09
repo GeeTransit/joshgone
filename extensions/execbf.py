@@ -299,11 +299,13 @@ class ExecBF(commands.Cog):
         if executor.task is not None:
             await ctx.send("Executor is still running")
             return
-        if text and text[-1] == "\\":
-            text = text[-1:]
+        if text == "\\":
+            inp = [None]
+        elif text.endswith("\\"):
+            inp = text[-1:].encode()
         else:
-            text = text + "\n"
-        executor._inp.extend(text.encode())
+            inp = f"{text}\n".encode()
+        executor._inp.extend(inp)
         executor.start()
 
 def setup(bot):
