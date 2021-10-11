@@ -6,9 +6,9 @@ from discord.ext import commands
 
 class Gee(commands.Cog):
     replies = [reply.replace("-", " ") for reply in '''
-        dang-lol  bruga  lmao  fax  brug-lol  lol  o-ezpz  brug-tru  damn
+        dang-lol  lmao  fax  bruh-lol  lol  o-ezpz  bruh-tru  damn
         dang  tru  lmaoo  big-fax  o-really  ebic  o-dang  wut-lol  damn-boi
-        tooez  pog  lol-aight  o-bruga  sus  ree  yeebruh  xD  bruh  frig
+        tooez  pog  lol-aight  o-bruh  sus  ree  yeebruh  xD  bruh
         pong  lol-pong  ezpz  bruh-moment  ez  monke  toocool
     '''.split()]
     replies_question = [reply.replace("-", " ") for reply in '''
