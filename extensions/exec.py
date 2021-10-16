@@ -217,8 +217,12 @@ class Exec(commands.Cog):
                         paginator.add_line(line[start : start+1950])
                 if len(paginator.pages) > 20:
                     raise ValueError("Result too long for output")
+                nonempty = 0
                 for page in paginator.pages:
-                    await ctx.send(page.strip() or "*Empty string*")
+                    nonempty += 1
+                    await ctx.send(page.strip())
+                if nonempty == 0:
+                    await ctx.send("*Empty string*")
             else:
                 await ctx.send("*Finished*")
 
