@@ -69,9 +69,9 @@ class Exec(commands.Cog):
         # It's on multiple lines - remove wrapping code fences
         lines = text.splitlines(keepends=True)
         if lines[0].strip() != "```py":
-            raise ValueError(fr"First line has to be \`\`\`py")
+            raise ValueError(r"First line has to be \`\`\`py")
         if lines[-1].strip() != "```":
-            raise ValueError(fr"Last line has to be \`\`\`")
+            raise ValueError(r"Last line has to be \`\`\`")
         del lines[0]
         del lines[-1]
         text = "".join(lines)
