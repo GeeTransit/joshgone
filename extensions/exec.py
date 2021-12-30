@@ -201,7 +201,7 @@ class Exec(commands.Cog):
             result = await func(**variables)
             if inspect.isawaitable(result):
                 result = await result
-        except Exception as e:
+        except BaseException as e:
             import traceback
             traceback.print_exc()
             await ctx.send(f"*Traceback printed:* `{e!r}`")
