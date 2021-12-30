@@ -1,4 +1,5 @@
 import asyncio
+import os
 from discord.ext import commands
 
 class JSE(commands.Cog):
@@ -12,8 +13,8 @@ class JSE(commands.Cog):
         elif code.startswith("```js\n") and code.endswith("\n```"):
             code = code[6:-4]
         process = await asyncio.create_subprocess_exec(
-            "deno", "run", "-",
-            env={"NO_COLOR": "1"},
+            "deno", "run", "--allow-net", "-",
+            env=os.environ | {"NO_COLOR": "1"},
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
