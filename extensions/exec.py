@@ -208,7 +208,10 @@ class Exec(commands.Cog):
         else:
             if result is not None:
                 self.result = result
-                content = str(result)
+                if isinstance(result, str):
+                    content = result
+                else:
+                    content = repr(result)
                 if len(content) > 30000:
                     raise ValueError("Result too long for output")
                 paginator = commands.Paginator(prefix="", suffix="")
