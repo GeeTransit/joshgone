@@ -201,14 +201,17 @@ class Exec(commands.Cog):
             result = await func(**variables)
             if inspect.isawaitable(result):
                 result = await result
-        except Exception as e:
+        except BaseException as e:
             import traceback
             traceback.print_exc()
             await ctx.send(f"*Traceback printed:* `{e!r}`")
         else:
             if result is not None:
                 self.result = result
-                content = str(result)
+                if isinstance(result, str):
+                    content = result
+                else:
+                    content = repr(result)
                 if len(content) > 30000:
                     raise ValueError("Result too long for output")
                 paginator = commands.Paginator(prefix="", suffix="")

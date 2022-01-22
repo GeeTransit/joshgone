@@ -66,6 +66,15 @@ class Remind(commands.Cog):
         self.tasks[name] = task
         await ctx.send(f"Added reminder with name {name!r}")
 
+    @commands.command(name="in")
+    async def in_(self, ctx, time, *, message):
+        """Sends the message after the specified amount of time
+
+        Equivalent to %remind - <time> <message>. See %remind for more info.
+
+        """
+        await self.remind(ctx, "-", time, arg=message)
+
     @commands.command()
     async def cancel(self, ctx, *, name):
         """Cancels a previous reminder"""
