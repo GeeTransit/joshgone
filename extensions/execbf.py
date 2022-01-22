@@ -149,9 +149,7 @@ class BFExecutor:
                         else:
                             # Loop to start on unmatched ending brackets
                             self._paired_brackets[self._program_ptr] = -1
-                    if self._data[self._data_ptr] == 0:
-                        pass
-                    else:
+                    if self._data[self._data_ptr] != 0
                         self._program_ptr = self._paired_brackets[
                             self._program_ptr
                         ]
@@ -207,9 +205,9 @@ class ExecBF(commands.Cog):
         # It's on multiple lines - remove wrapping code fences
         lines = text.splitlines(keepends=True)
         if lines[0].strip() != "```bf":
-            raise ValueError(fr"First line has to be \`\`\`bf")
+            raise ValueError(r"First line has to be \`\`\`bf")
         if lines[-1].strip() != "```":
-            raise ValueError(fr"Last line has to be \`\`\`")
+            raise ValueError(r"Last line has to be \`\`\`")
         del lines[0]
         del lines[-1]
         text = "".join(lines)
