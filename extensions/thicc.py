@@ -12,8 +12,8 @@ class Thicc(commands.Cog):
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         "🇦🇧🇨🇩🇪🇫🇬🇭🇮🇯🇰🇱🇲🇳🇴🇵🇶🇷🇸🇹🇺🇻🇼🇽🇾🇿",
     ):
-        mapping[original.upper()] = f"{target}\u200B"
-        mapping[original.lower()] = f"{target}\u200B"
+        mapping[original.upper()] = f"{target}\u180E"
+        mapping[original.lower()] = f"{target}\u180E"
     for original, target in zip(
         "!?+-",
         "❗❓➕➖",
