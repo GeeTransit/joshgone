@@ -149,7 +149,7 @@ class BFExecutor:
                         else:
                             # Loop to start on unmatched ending brackets
                             self._paired_brackets[self._program_ptr] = -1
-                    if self._data[self._data_ptr] != 0
+                    if self._data[self._data_ptr] != 0:
                         self._program_ptr = self._paired_brackets[
                             self._program_ptr
                         ]
