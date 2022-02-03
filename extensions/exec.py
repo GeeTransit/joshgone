@@ -177,6 +177,21 @@ class Exec(commands.Cog):
         if ctx.guild is not None:
             # A guild doesn't exist when in a DM
             variables["guild"] = ctx.guild
+        if ctx.message.reference is not None:
+            reference = ctx.message.reference
+            if reference.cached_message is not None:
+                variables["reply"] = reference.cached_message
+            else:
+                # Fetch message if possible
+                cid = reference.channel_id
+                mid = reference.message_id
+                try:
+                    channel = self.bot.get_channel(cid)
+                    if channel is None:
+                        channel = await self.bot.fetch_channel(cid)
+                    variables["reply"] = await channel.fetch_message(mid)
+                except:
+                    pass
         if hasattr(self, "result"):
             variables["_"] = self.result
         try:
