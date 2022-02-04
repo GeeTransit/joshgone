@@ -64,4 +64,4 @@ parser.add_argument(
 if __name__ == "__main__":
     args = parser.parse_args()
     note_infos = asyncio.run(get_note_infos(args.url))
-    json.dump(sys.stdout, note_infos, separators=[",",":"])
+    json.dump(note_infos, sys.stdout, separators=[",",":"])
