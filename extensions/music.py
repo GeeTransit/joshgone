@@ -341,6 +341,11 @@ class Music(commands.Cog):
                 nonlocal stop
                 stop = True
                 producer_event.set()
+                # Terminate the process
+                process.stdout.close()
+                process.stdin.close()
+                process.terminate()
+                process.wait()
         # Wrap the sound player chunk iterator with an audio source
         source = s.wrap_discord_source(consumer())
         # Wait a lil bit to get the chunk queue prefilled
