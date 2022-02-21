@@ -13,7 +13,7 @@ class JSE(commands.Cog):
         elif code.startswith("```js\n") and code.endswith("\n```"):
             code = code[6:-4]
         process = await asyncio.create_subprocess_exec(
-            "deno", "run", "--allow-net", "-",
+            "deno", "run", "--allow-net", "--allow-hrtime", "-",
             env=os.environ | {"NO_COLOR": "1"},
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
