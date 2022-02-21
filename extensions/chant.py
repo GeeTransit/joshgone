@@ -17,6 +17,58 @@ class Dashes(commands.Converter):
             raise commands.BadArgument("argument does not consist of dashes only")
         return "-"
 
+def match(pattern: str, string: str) -> bool:
+    """Return whether pattern matches string in linear time
+
+    - pattern: simple glob-ish pattern
+    - string: string to match against
+
+    The only special characters supported are ? and %, for matching one and any
+    number of characters respectively.
+
+    Adapted from https://research.swtch.com/glob.
+
+    """
+    # Fast paths for specific simple cases
+    if "?" not in pattern:
+        any_count = pattern.count("%")
+        if any_count == 0:  # Simple equality
+            return string == pattern
+        if any_count == 1:  # Simple prefix + suffix
+            prefix, _, suffix = pattern.partition("%")
+            return (
+                len(prefix) + len(suffix) < len(string)  # Ensure no overlap
+                and string.startswith(prefix)
+                and string.endswith(suffix)
+            )
+
+    # General code
+    pi = pj = 0
+    i = j = 0
+    while pi < len(pattern) or i < len(string):
+        if pi < len(pattern):
+            char = pattern[pi]
+            if char == "?":
+                if i < len(string):
+                    pi += 1
+                    i += 1
+                    continue
+            elif char == "%":
+                pi, pj = pi + 1, pi
+                j = i + 1
+                continue
+            else:
+                if i < len(string) and string[i] == char:
+                    pi += 1
+                    i += 1
+                    continue
+        if 0 < j <= len(string):
+            pi, pj = pj, 0
+            i, j = j, 0
+            continue
+        return False
+    return True
+
 class Chant(commands.Cog):
 
     def __init__(self, bot):
@@ -41,7 +93,48 @@ class Chant(commands.Cog):
         if current:
             yield "".join(current)
 
+    @_chants.command(name="find", ignore_extra=False)
+    async def _find(self, ctx, name_pattern: str):
+        """Find chants whose names match the given pattern
+
+        Assume the following chants exist:
+            %chants add amogus   -
+            %chants add amoguise -
+            %chants add mongus   -
+            %chants add mongue   -
+
+        Usage:
+            %chants find amogus     -> amogus               # exact match
+            %chants find amo%       -> amogus, amoguise     # prefix
+            %chants find %gus       -> amogus, mongus       # suffix
+            %chants find mongu?     -> mongus, mongue       # any character
+            %chants find %m?gu%e    -> amoguise             # combine them
+
+        The only special characters supported are ? and %, for matching one and
+        any number of characters respectively.
+
+        """
+        async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
+            async with db.execute(
+                "SELECT chant_name FROM chants WHERE server_id = ?;",
+                [ctx.guild.id],
+            ) as cursor:
+                names = [
+                    name
+                    async for [name] in cursor
+                    if match(name_pattern, name)
+                ]
+        length = len(names)
+        if not names:
+            names = ["None"]
+        for i in range(1, len(names)):
+            names[i] = f", {names[i]}"
+        names.insert(0, f"Found {length} ")
+        for message in self.pack(names):
+            await ctx.send(message)
+
     @_chants.command(name="regexlist", ignore_extra=False, hidden=True)
+    @commands.is_owner()
     async def _regexlist(self, ctx, max_amount: typing.Optional[int] = -1, *, regex):
         async with aiosqlite.connect(os.environ["JOSHGONE_DB"]) as db:
             async with db.execute("SELECT chant_name FROM chants WHERE server_id = ?;", (ctx.guild.id,)) as cursor:
