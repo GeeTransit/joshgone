@@ -30,6 +30,9 @@ INSTRUMENT_SETTINGS_SCRIPT = '''
             volume: settings.volume,
         };
     }
+    instrument_settings.all = {
+        volume: song.settings.volume,
+    };
     return instrument_settings;
 }
 '''
@@ -41,8 +44,10 @@ async def get_note_infos(url):
         await page.goto(url)
         note_infos = await page.evaluate(NOTE_INFOS_SCRIPT)
         instrument_settings = await page.evaluate(INSTRUMENT_SETTINGS_SCRIPT)
+        all_volume = instrument_settings["all"]["volume"]
         def _scale_volume():
             for note_info in note_infos:
+                note_info["volume"] *= all_volume
                 instrument = str(note_info["instrument"])
                 if instrument not in instrument_settings:
                     continue
