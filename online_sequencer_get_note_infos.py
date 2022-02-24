@@ -24,10 +24,10 @@ NOTE_INFOS_SCRIPT = '''
 INSTRUMENT_SETTINGS_SCRIPT = '''
 () => {
     const instrument_settings = {};
-    for (const instrument in song.settings.instrument) {
-        const settings = song.settings.instrument[instrument]
+    for (const instrument in song.settings.instruments) {
+        const settings = song.settings.instruments[instrument]
         instrument_settings[instrument] = {
-            volume: settings[instrument],
+            volume: settings.volume,
         };
     }
     return instrument_settings;
@@ -43,7 +43,7 @@ async def get_note_infos(url):
         instrument_settings = await page.evaluate(INSTRUMENT_SETTINGS_SCRIPT)
         def _scale_volume():
             for note_info in note_infos:
-                instrument = note_info["instrument"]
+                instrument = str(note_info["instrument"])
                 if instrument not in instrument_settings:
                     continue
                 settings = instrument_settings[instrument]
