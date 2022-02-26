@@ -92,16 +92,7 @@ python3 joshgone.py
 
 *Note: This is very experimental.*
 
-For playing music from Online Sequencer to work, you need to install from `requirements-os.txt` instead of `requirements.txt`. This file includes [Playwright](https://playwright.dev/) which we use to get the sequence's notes. This also means we need to run playwright's installation step too. Run the following in the virtual environment:
-
-```sh
-# On Windows
-pip install -r requirements-os.txt
-playwright install
-# On Linux
-pip3 install -r requirements-os.txt
-playwright install
-```
+For playing music from Online Sequencer to work, you need to install from `requirements-os.txt` instead of `requirements.txt`. For more info on how it gets the sequence notes, check out `online_sequencer_get_note_infos.py`.
 
 Next, run the following command in the virtual environment. This will download the instrument settings and the audio file for each instrument into a directory named oscollection.
 
