@@ -1,7 +1,6 @@
 # Source: https://github.com/Rapptz/discord.py/blob/master/examples/basic_voice.py
 
 import asyncio
-import dataclasses
 import random
 import typing
 import traceback
