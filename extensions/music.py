@@ -280,7 +280,11 @@ class Music(commands.Cog):
         def producer():
             try:
                 # Loop over chunks of the process's stdout
-                for chunk in s.chunked_ffmpeg_process(process):
+                for chunk in s.equal_chunk_stream(
+                    s.chunked_ffmpeg_process(process),
+                    3840,
+                ):
+                    chunk = bytes(chunk)
                     while True:
                         # Check if we need to stop
                         if stop:

@@ -11,7 +11,7 @@ dependencies = [
 	"discord.py==1.7.3",
 	"setuptools==57.1.0",  # yoyo-migrations needs it but didn't declare it :/
 	"simpleeval==0.9.10",
-	"soundit==0.1",
+	"soundit==0.2.1",
 	"yoyo-migrations==7.3.2",
 	"yt-dlp==2021.9.2",
 	# Pinned sub-dependencies
@@ -28,7 +28,7 @@ dependencies = [
 	"six==1.15.0",
 	"sqlparse==0.4.1",
 	"tabulate==0.8.7",
-	"typing-extensions==3.7.4.3",
+	"typing-extensions==4.0.0",
 	"websockets==9.1",
 	"yarl==1.6.3",
 ]
