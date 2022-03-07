@@ -12,3 +12,6 @@ Homepage = "https://github.com/GeeTransit/joshgone"
 [[project.authors]]
 name = "George Zhang"
 email = "geetransit@gmail.com"
+
+[tool.hatch.version]
+source = "vcs"

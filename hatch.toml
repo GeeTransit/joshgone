@@ -1,6 +1,3 @@
-[version]
-source = "vcs"
-
 # Until a lock file exists for Hatch, all dependencies are gonna be pinned here
 
 [envs.default]
