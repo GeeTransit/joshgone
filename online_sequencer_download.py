@@ -3,17 +3,34 @@ import json
 import asyncio
 import os
 import subprocess
+import re
 
-from playwright.async_api import async_playwright
+import httpx
+
+def _extract_data(text):
+    """Extracts the base64 encoded string from the site's JavaScript"""
+    # This is more fragile than a nuclear bomb
+    return base64.b64decode(re.search(r"var data = '([^']*)';", text)[1])
 
 async def get_instrument_settings():
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page()
-        await page.goto("https://onlinesequencer.net/")
-        instrument_settings = await page.evaluate("settings")
-        await browser.close()
-    return instrument_settings
+    # Get JS filename
+    async with httpx.AsyncClient() as client:
+        response = await client.get("https://onlinesequencer.net/")
+    # More fragile than your mom
+    match = re.search(
+        r'<script type="text/javascript" src="(/resources/[^"]*)"></script>',
+        response.text,
+    )
+    if match is None:
+        raise RuntimeError("resources script not found")
+    filename = match[1].lstrip("/")
+    # Get settings JSON
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"https://onlinesequencer.net/{filename}")
+    match = re.search(r"var settings=({(?:(?!};).)*});", response.text)
+    if match is None:
+        raise RuntimeError("settings JSON not found")
+    return json.loads(match[1])
 
 def download_instrument_audio(directory, instrument):
     url = f"https://onlinesequencer.net/app/instruments/{instrument}.ogg?v=12"
