@@ -5,7 +5,7 @@ skip-install = true
 dependencies = [
 	"aiohttp==3.7.3",
 	"aiosqlite==0.16.0",
-	"discord.py==1.7.3",
+	"discord.py[voice]==1.7.3",
 	"setuptools==57.1.0",  # yoyo-migrations needs it but didn't declare it :/
 	"simpleeval==0.9.10",
 	"soundit==0.2.1",
