@@ -12,7 +12,7 @@ class Gee(commands.Cog):
         pong  lol-pong  ezpz  bruh-moment  ez  monke  toocool
     '''.split()]
     replies_question = [reply.replace("-", " ") for reply in '''
-        ye-lol  lol-idk  na-lol  ye-ik  na  ye  bruh-na
+        ye-lol  lol-idk  na-lol  ye-ik  na  ye  bruh-na  orz-ye  na-idk
     '''.split()]
 
     def __init__(self, bot):
