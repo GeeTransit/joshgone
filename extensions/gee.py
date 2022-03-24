@@ -14,6 +14,9 @@ class Gee(commands.Cog):
     replies_question = [reply.replace("-", " ") for reply in '''
         ye-lol  lol-idk  na-lol  ye-ik  na  ye  bruh-na  orz-ye  sus-na
     '''.split()]
+    replies_question_weights = [
+        3/7/4, 1/7, 3/7/4, 3/7/4, 3/7/4, 3/7/4, 3/7/4, 3/7/4, 3/7/4,
+    ]
 
     def __init__(self, bot):
         self.bot = bot
@@ -46,7 +49,11 @@ class Gee(commands.Cog):
             return
         except ValueError:
             # Reply with yes or no to a question
-            await ctx.send(random.choice(self.replies_question))
+            await ctx.send(random.choices(
+                self.replies_question,
+                weights=self.replies_question_weights,
+                k=1,
+            )[0])
             return
 
         try:
