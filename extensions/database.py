@@ -41,6 +41,14 @@ class Database(commands.Cog):
                 await db.execute("UPDATE server SET running = ? WHERE server_id = ?;", (run, ctx.guild.id))
                 await db.commit()
                 await ctx.send(f"JoshGone is now {'' if run else 'not '}running.")
+        if cron := self.bot.get_cog("Cron"):
+            try:
+                await cron.notify_running_updated({
+                    "guild_id": ctx.guild.id,
+                    "running": run,
+                })
+            except Exception as e:
+                print(f'Error notifying cron cog: {e!r}')
 
 def setup(bot):
     bot.add_cog(Database(bot))

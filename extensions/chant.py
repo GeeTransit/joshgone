@@ -180,6 +180,11 @@ class Chant(commands.Cog):
         removed.insert(0, f"Removed {length}: ")
         for message in self.pack(removed):
             await ctx.send(message)
+        if cron := self.bot.get_cog("Cron"):
+            try:
+                await cron.notify_chants_updated({"guild_id": ctx.guild.id})
+            except Exception as e:
+                print(f'Error notifying cron cog: {e!r}')
 
     @_chants.command(name="list", ignore_extra=False)
     async def _list(self, ctx, debug: bool = False):
@@ -240,6 +245,11 @@ class Chant(commands.Cog):
             await db.execute("INSERT OR REPLACE INTO chants VALUES (?, ?, ?, ?);", (ctx.guild.id, name, text, current))
             await db.commit()
         await ctx.send(f"Updated chant {name}")
+        if cron := self.bot.get_cog("Cron"):
+            try:
+                await cron.notify_chants_updated({"guild_id": ctx.guild.id})
+            except Exception as e:
+                print(f'Error notifying cron cog: {e!r}')
 
     @_chants.command(name="add")
     @commands.check_any(
@@ -268,6 +278,11 @@ class Chant(commands.Cog):
             await db.execute("INSERT INTO chants VALUES (?, ?, ?, ?);", (ctx.guild.id, name, text, ctx.author.id))
             await db.commit()
         await ctx.send(f"Added chant {name}")
+        if cron := self.bot.get_cog("Cron"):
+            try:
+                await cron.notify_chants_updated({"guild_id": ctx.guild.id})
+            except Exception as e:
+                print(f'Error notifying cron cog: {e!r}')
 
     @_chants.command(name="check", ignore_extra=False)
     async def _check(self, ctx, name: str):
@@ -350,6 +365,11 @@ class Chant(commands.Cog):
             await db.execute("DELETE FROM chants WHERE server_id = ? AND chant_name = ?;", (ctx.guild.id, name))
             await db.commit()
         await ctx.send(f"Removed chant {name}")
+        if cron := self.bot.get_cog("Cron"):
+            try:
+                await cron.notify_chants_updated({"guild_id": ctx.guild.id})
+            except Exception as e:
+                print(f'Error notifying cron cog: {e!r}')
 
     @commands.command(name="chant", aliases=["h"], ignore_extra=False)
     async def _chant(self, ctx, name: str, repeats: int = 5, delay: float = 2):
