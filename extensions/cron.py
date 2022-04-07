@@ -94,21 +94,6 @@ def _next_from_info(now, info: dict) -> datetime:
         day_or=False,
     ).get_next()
 
-def _chants_to_heap(now, chants: Dict[str, str]) -> list:
-    croniter_heap = []
-    for name, raw in chants.items():
-        try:
-            info = _info_from_raw(now, name, raw)
-            croniter_heap.append((
-                _next_from_info(now, info),
-                info["name"],
-                info,
-            ))
-        except BaseException as e:
-            print(f'Cron error on {name}: {e!r}')
-    heapify(croniter_heap)
-    return croniter_heap
-
 def _get_chant_channel(info: dict, text_channels: list):
     for channel in text_channels:
         if (
@@ -151,7 +136,14 @@ class Cron(commands.Cog):
         if guild_id not in self._cron_runners:
             runner = self.guild_cron_runner(guild_id)
             self._cron_runners[guild_id] = task = asyncio.create_task(runner)
-            task.add_done_callback(lambda task: task.exception())  # Daemon
+            # Log uncaught errors
+            def _on_runner_done(task):
+                if task.cancelled():
+                    return
+                if not (e := task.exception()):
+                    return
+                print(f'Cron fatal error in {guild_id}: {e!r}')
+            task.add_done_callback(_on_runner_done)
 
     def stop_runner(self, guild_id):
         if task := self._cron_runners.get(guild_id):
@@ -165,47 +157,53 @@ class Cron(commands.Cog):
     async def guild_cron_runner(self, guild_id: int):
         # Create heap of chants sorted by UTC time and chant name
         chants = await get_namespaced_chants(guild_id, "cron")
-        croniter_heap = await asyncio.to_thread(lambda: _chants_to_heap(
-            datetime.now(tz=timezone.utc),
-            chants,
-        ))
-        try:
-            while True:
-                now = datetime.now(tz=timezone.utc)
-                # Send newest message if it's scheduled to run
-                if croniter_heap:
-                    old_next, _, info = croniter_heap[0]
-                    if old_next <= now:
-                        # push cron's next time
-                        try:
-                            heapreplace(croniter_heap, (
-                                _next_from_info(now, info),
-                                info["name"],
-                                info,
-                            ))
-                        except Exception as e:
-                            print(f'Cron error on {info["name"]}: {e!r}')
-                        # send chant
-                        try:
-                            guild = discord.utils.get(
-                                self.bot.guilds,
-                                id=guild_id,
-                            )
-                            channel = _get_chant_channel(
-                                info,
-                                guild.text_channels,
-                            )
-                            await channel.send(info["text"])
-                        except Exception as e:
-                            print(f'Cron send error on {info["name"]}: {e!r}')
-                if not croniter_heap:
-                    return
-                # wait until next cron
-                next_ = croniter_heap[0][0]
-                next_seconds = (next_ - now).total_seconds()
-                await asyncio.sleep(next_seconds)
-        except Exception as e:
-            print(f'Cron fatal error in {guild_id}: {e!r}')
+        now = datetime.now(tz=timezone.utc)
+        def _heap_key(info):
+            try:
+                return (
+                    _next_from_info(now, info),
+                    info["name"],
+                    info,
+                )
+            except BaseException as e:
+                print(f'Cron error on {info["name"]}: {e!r}')
+                return None
+        croniter_heap = [
+            item
+            for name, raw in chants.items()
+            for info in [_info_from_raw(now, name, raw)]
+            if (item := _heap_key(info))
+        ]
+        heapify(croniter_heap)
+        while croniter_heap:
+            # wait until next cron
+            now = datetime.now(tz=timezone.utc)
+            next_seconds = (croniter_heap[0][0] - now).total_seconds()
+            await asyncio.sleep(next_seconds)
+            # Send newest message if it's scheduled to run
+            now = datetime.now(tz=timezone.utc)
+            if croniter_heap[0][0] <= now:
+                info = croniter_heap[0][-1]
+                # push cron's next time
+                if item := _heap_key(info):
+                    heapreplace(croniter_heap, item)
+                # send chant
+                try:
+                    guild = discord.utils.get(
+                        self.bot.guilds,
+                        id=guild_id,
+                    )
+                    if guild is None:
+                        raise LookupError(
+                            f'guild not found: id={guild_id}'
+                        )
+                    channel = _get_chant_channel(
+                        info,
+                        guild.text_channels,
+                    )
+                    await channel.send(info["text"])
+                except Exception as e:
+                    print(f'Cron send error on {info["name"]}: {e!r}')
 
     @commands.command(name="next")
     async def next_command(self, ctx, *, name: str):
