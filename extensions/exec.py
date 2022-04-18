@@ -226,7 +226,15 @@ class Exec(commands.Cog):
                     content = repr(result)
                 if len(content) > 30000:
                     raise ValueError("Result too long for output")
-                paginator = commands.Paginator(prefix="", suffix="")
+                if content.startswith("```") and content.endswith("\n```"):
+                    prefix, _, content = content.partition("\n")
+                    if len(prefix) > 50:
+                        content = prefix[50:] + content
+                        prefix = prefix[:50]
+                    content, _, suffix = content.rpartition("\n")
+                    paginator = commands.Paginator(prefix=prefix+"\n", suffix="\n"+suffix)
+                else:
+                    paginator = commands.Paginator(prefix="", suffix="")
                 for line in content.splitlines():
                     for start in range(0, len(line), 1950):
                         paginator.add_line(line[start : start+1950])
