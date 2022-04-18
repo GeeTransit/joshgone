@@ -7,7 +7,6 @@ import asyncio
 import ast
 import functools
 import pydoc
-import inspect
 
 import discord
 from discord.ext import commands
@@ -214,8 +213,6 @@ class Exec(commands.Cog):
         try:
             # Await and send its result
             result = await func(**variables)
-            if inspect.isawaitable(result):
-                result = await result
         except BaseException as e:
             import traceback
             traceback.print_exc()
