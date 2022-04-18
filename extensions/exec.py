@@ -39,6 +39,15 @@ class Exec(commands.Cog):
         return "".join(stack)
 
     @staticmethod
+    def raws(obj: object, lang: str = "py") -> str:
+        if not isinstance(obj, str):
+            obj = ascii(obj)
+        else:
+            obj = ascii(obj)
+            obj = obj.replace("\\"+obj[0], obj[0])[1:-1].replace("\\n", "\n")
+        return f"```{lang}\n" + obj.replace("`", "`\u200b") + "\n```"
+
+    @staticmethod
     def reload(name):
         """Helper function to reload the specified module"""
         import importlib
@@ -168,6 +177,7 @@ class Exec(commands.Cog):
             "ctx": ctx,
             "cog": self,
             "help": self.helps,
+            "raw": self.raws,
             "reload": self.reload,
             "message": ctx.message,
             "author": ctx.author,
