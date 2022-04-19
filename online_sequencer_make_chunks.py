@@ -11,7 +11,7 @@ def make_chunks(infos, **kwargs):
 def make_sound(note_infos, *, settings, template, cache=None):
     """Generate a sound from note infos"""
 
-    # Cached to be a tad bit faster  (removes float conversion step)
+    # Cached to be a tad bit faster (removes float conversion step)
     @s.lru_iter_cache(maxsize=16)
     def instrument_sound_at(instrument, note_index, length):
         if 13 <= instrument <= 16:
