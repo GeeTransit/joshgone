@@ -7,11 +7,6 @@ import re
 
 import httpx
 
-def _extract_data(text):
-    """Extracts the base64 encoded string from the site's JavaScript"""
-    # This is more fragile than a nuclear bomb
-    return base64.b64decode(re.search(r"var data = '([^']*)';", text)[1])
-
 async def get_instrument_settings():
     # Get JS filename
     async with httpx.AsyncClient() as client:
