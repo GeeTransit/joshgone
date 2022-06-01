@@ -161,6 +161,7 @@ class Music(commands.Cog):
     async def handle_advance(self, item):
         ctx, error = item
         info = self.get_info(ctx)
+        channel = ctx.guild.get_channel(info["channel_id"])
         try:
             # If we are processing it right now...
             if info["processing"]:
@@ -171,10 +172,10 @@ class Music(commands.Cog):
             info["processing"] = True
             # If there's an error, send it to the channel
             if error is not None:
-                await ctx.send(f"Player error: {error!r}")
+                await channel.send(f"Player error: {error!r}")
             # If we aren't connected anymore, notify and leave
             if ctx.voice_client is None:
-                await ctx.send("Not connected to a voice channel anymore")
+                await channel.send("Not connected to a voice channel anymore")
                 await self.leave(ctx)
                 return
             queue = info["queue"]
@@ -191,11 +192,11 @@ class Music(commands.Cog):
                 async with ctx.typing():
                     source, title = await getattr(self, f"_play_{current['ty']}")(current['query'])
                     ctx.voice_client.play(source, after=after)
-                await ctx.send(f"Now playing: {title}")
+                await channel.send(f"Now playing: {title}")
             else:
-                await ctx.send(f"Queue empty")
+                await channel.send(f"Queue empty")
         except Exception as e:
-            await ctx.send(f"Internal Error: {e!r}")
+            await channel.send(f"Internal Error: {e!r}")
             info["waiting"] = False
             await self.skip(ctx)
             self.schedule(ctx)
@@ -223,6 +224,9 @@ class Music(commands.Cog):
             wrapped["version"] = 3
         else:
             wrapped = self.data[guild_id]
+        if wrapped["version"] == 3:
+            wrapped["channel_id"] = ctx.channel.id
+            wrapped["version"] = 4
         return wrapped
 
     # Helper function to remove the info for a guild
@@ -358,10 +362,20 @@ class Music(commands.Cog):
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel):
-        """Joins a voice channel"""
+        """Joins a voice channel
+
+        Text output will be sent from the channel this command was run in. This
+        command can be run multiple times safely.
+
+        """
         if ctx.voice_client is not None:
-            return await ctx.voice_client.move_to(channel)
-        await channel.connect()
+            await ctx.voice_client.move_to(channel)
+        else:
+            await channel.connect()
+        info = self.get_info(ctx)
+        if info["channel_id"] != ctx.channel.id:
+            info["channel_id"] = ctx.channel.id
+            await ctx.send("Switching music output to this channel")
 
     @commands.command()
     @commands.is_owner()
