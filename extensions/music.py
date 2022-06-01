@@ -189,7 +189,7 @@ class Music(commands.Cog):
                 info["current"] = current
                 # Get an audio source and play it
                 after = lambda error, ctx=ctx: self.schedule(ctx, error)
-                async with ctx.typing():
+                async with channel.typing():
                     source, title = await getattr(self, f"_play_{current['ty']}")(current['query'])
                     ctx.voice_client.play(source, after=after)
                 await channel.send(f"Now playing: {title}")
