@@ -168,12 +168,14 @@ class Cron(commands.Cog):
             except BaseException as e:
                 print(f'Cron error on {info["name"]}: {e!r}')
                 return None
-        croniter_heap = [
-            item
-            for name, raw in chants.items()
-            for info in [_info_from_raw(now, name, raw)]
-            if (item := _heap_key(info))
-        ]
+        croniter_heap = []
+        for name, raw in chants.items():
+            try:
+                info = _info_from_raw(now, name, raw)
+            except BaseException as e:
+                print(f'Cron error on {name}: {e!r}')
+            if item := _heap_key(info):
+                croniter_heap.append(item)
         heapify(croniter_heap)
         while croniter_heap:
             # wait until next cron
