@@ -112,6 +112,7 @@ class Cron(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._cron_runners = {}
+        self._cron_next = {}
         for guild in self.bot.guilds:
             self.start_runner(guild.id)
 
@@ -136,6 +137,7 @@ class Cron(commands.Cog):
         if guild_id not in self._cron_runners:
             runner = self.guild_cron_runner(guild_id)
             self._cron_runners[guild_id] = task = asyncio.create_task(runner)
+            self._cron_next[guild_id] = None
             # Log uncaught errors
             def _on_runner_done(task):
                 if task.cancelled():
@@ -149,6 +151,7 @@ class Cron(commands.Cog):
         if task := self._cron_runners.get(guild_id):
             task.cancel()
             del self._cron_runners[guild_id]
+            del self._cron_next[guild_id]
 
     def restart_runner(self, guild_id):
         self.stop_runner(guild_id)
@@ -180,6 +183,7 @@ class Cron(commands.Cog):
         while croniter_heap:
             # wait until next cron
             now = datetime.now(tz=timezone.utc)
+            self._cron_next[guild_id] = croniter_heap[0][1]
             next_seconds = (croniter_heap[0][0] - now).total_seconds()
             await asyncio.sleep(next_seconds)
             # Send newest message if it's scheduled to run
@@ -208,8 +212,25 @@ class Cron(commands.Cog):
                     print(f'Cron send error on {info["name"]}: {e!r}')
 
     @commands.command(name="next")
-    async def next_command(self, ctx, *, name: str):
-        """Return the next time the specified cron chant will run"""
+    async def next_command(self, ctx, *, name: Optional[str] = None):
+        """Return the next time the specified cron chant will run
+
+        If name isn't specified, the next cron chant for the server will be
+        shown.
+
+        """
+        if name is None:
+            name = self._cron_next.get(ctx.guild.id)
+            if name is None:
+                await ctx.send("No crons running")
+                return
+            raw = await get_chant(ctx.guild.id, name)
+            assert raw is not None
+            now = datetime.now(tz=timezone.utc)
+            info = _info_from_raw(now, name, raw)
+            next_ = _next_from_info(now, info)
+            await ctx.send(f'{next_} [<t:{int(next_.timestamp())}:F>, {name}]')
+            return
         raw = await get_chant(ctx.guild.id, name)
         if raw is None:
             await ctx.send("Chant not found :/")
