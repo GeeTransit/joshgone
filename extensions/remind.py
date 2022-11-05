@@ -1,5 +1,6 @@
 import asyncio
 import random
+import re
 
 import discord
 from discord.ext import commands
@@ -70,9 +71,13 @@ class Remind(commands.Cog):
     async def in_(self, ctx, time, *, message):
         """Sends the message after the specified amount of time
 
-        Equivalent to %remind - <time> <message>. See %remind for more info.
+        Equivalent to %remind - <time> <message>. If message doesn't contain a
+        ping however, a ping to the author will be prepended. See %remind for
+        more info.
 
         """
+        if not re.match(r"<@\d+>", message):
+            message = f'{ctx.author.mention} {message}'
         await self.remind(ctx, "-", time, arg=message)
 
     @commands.command()
