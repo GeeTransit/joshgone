@@ -31,6 +31,11 @@ def make_sound(note_infos, *, settings, template, cache=None):
         filename = template.replace("<>", str(instrument))
         length = 60 / (settings["originalBpm"][instrument] * 2)
         start = (note_index - settings["min"][instrument] - 24) * length
+        if not getattr(s, "has_av", False):
+            args = s.make_ffmpeg_section_args(filename, start, length)
+            process = s.create_ffmpeg_process(*args)
+            yield from s.chunked_ffmpeg_process(process)
+            return
         stream = s._chunked_libav_section(filename, start, length)
         yield from map(bytes, s.equal_chunk_stream(stream, 3840))
 
