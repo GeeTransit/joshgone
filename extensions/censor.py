@@ -157,4 +157,4 @@ class Censor(commands.Cog):
         await self.process_message(after)
 
 def setup(bot):
-    bot.add_cog(Censor(bot))
+    return bot.add_cog(Censor(bot))

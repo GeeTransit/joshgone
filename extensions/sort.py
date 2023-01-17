@@ -29,4 +29,4 @@ class Sort(commands.Cog):
         await ctx.send(" ".join(result))
 
 def setup(bot):
-    bot.add_cog(Sort(bot))
+    return bot.add_cog(Sort(bot))

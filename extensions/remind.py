@@ -96,4 +96,4 @@ class Remind(commands.Cog):
         await ctx.send(f"Reminders: {', '.join(map(str, names))}")
 
 def setup(bot):
-    bot.add_cog(Remind(bot))
+    return bot.add_cog(Remind(bot))

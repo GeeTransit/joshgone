@@ -144,4 +144,4 @@ class Solver(commands.Cog):
         await ctx.send(evaluator.eval(expr))
 
 def setup(bot):
-    bot.add_cog(Solver(bot))
+    return bot.add_cog(Solver(bot))

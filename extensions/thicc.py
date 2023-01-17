@@ -48,4 +48,4 @@ class Thicc(commands.Cog):
         await ctx.send("".join(result))
 
 def setup(bot):
-    bot.add_cog(Thicc(bot))
+    return bot.add_cog(Thicc(bot))

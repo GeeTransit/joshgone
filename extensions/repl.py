@@ -138,4 +138,4 @@ async def process(message):
 def setup(_bot):
     global bot
     bot = _bot
-    bot.add_cog(Repl(bot))
+    return bot.add_cog(Repl(bot))

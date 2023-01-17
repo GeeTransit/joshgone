@@ -60,4 +60,4 @@ class Get(commands.Cog):
         await ctx.send("\n".join(result))
 
 def setup(bot):
-    bot.add_cog(Get(bot))
+    return bot.add_cog(Get(bot))

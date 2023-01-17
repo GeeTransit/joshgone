@@ -307,4 +307,4 @@ class ExecBF(commands.Cog):
         executor.start()
 
 def setup(bot):
-    bot.add_cog(ExecBF(bot))
+    return bot.add_cog(ExecBF(bot))

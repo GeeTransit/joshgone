@@ -93,4 +93,4 @@ class Relay(commands.Cog):
         await self.user.dm_channel.send(message.content)
 
 def setup(bot):
-    bot.add_cog(Relay(bot))
+    return bot.add_cog(Relay(bot))

@@ -46,4 +46,4 @@ class Split(commands.Cog):
             await asyncio.sleep(delay)
 
 def setup(bot):
-    bot.add_cog(Split(bot))
+    return bot.add_cog(Split(bot))

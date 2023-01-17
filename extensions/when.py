@@ -200,4 +200,4 @@ class When(commands.Cog):
             del when_chants[guild_id]
 
 def setup(bot):
-    bot.add_cog(When(bot))
+    return bot.add_cog(When(bot))

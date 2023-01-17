@@ -49,4 +49,4 @@ class JSE(commands.Cog):
             await ctx.send("*Finished*")
 
 def setup(bot):
-    bot.add_cog(JSE(bot))
+    return bot.add_cog(JSE(bot))

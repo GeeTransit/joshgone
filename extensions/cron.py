@@ -248,4 +248,4 @@ class Cron(commands.Cog):
         await ctx.send("Restarted")
 
 def setup(bot):
-    bot.add_cog(Cron(bot))
+    return bot.add_cog(Cron(bot))

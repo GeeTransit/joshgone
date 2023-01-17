@@ -18,4 +18,4 @@ class YesNo(commands.Cog):
                 await ctx.send(f"{data['answer']} lol: {data['image']}")
 
 def setup(bot):
-    bot.add_cog(YesNo(bot))
+    return bot.add_cog(YesNo(bot))

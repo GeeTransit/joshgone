@@ -1,3 +1,5 @@
+import copy
+
 import discord
 from discord.ext import commands
 
@@ -9,11 +11,33 @@ class Self(commands.Cog):
             bot._self_accept = False
 
     def off(self):
+        if not hasattr(self.bot, "_skip_check"):
+            # For discord.py v2.x
+            self.bot.process_commands = self.bot._old_process_commands
+            del self.bot._old_process_commands
+
         self.bot.process_commands = self.bot._old_process_commands
         del self.bot._old_process_commands
         self.bot._skip_check = self.bot._old_skip_check
 
     def on(self):
+        if not hasattr(self.bot, "_skip_check"):
+            # For discord.py v2.x
+            self.bot._old_process_commands = self.bot.process_commands
+            async def _process_commands(message):
+                try:
+                    old_user = message.author._user
+                    message.author._user = copy.copy(message.author._user)
+                    message.author._user.id = -1
+                    message.author._user.bot = False
+                    ctx = await self.bot.get_context(message)
+                    message.author._user = old_user
+                    return await self.bot.invoke(ctx)
+                except Exception as e:
+                    print(f"Self cog error: {e!r}")
+                return await self.bot._old_process_commands(message)
+            self.bot.process_commands = _process_commands
+
         self.bot._old_process_commands = self.bot.process_commands
         async def _process_commands(message):
             await self.bot.invoke(await self.bot.get_context(message))
@@ -47,4 +71,4 @@ class Self(commands.Cog):
         await ctx.send(f"Self accept is now {state}")
 
 def setup(bot):
-    bot.add_cog(Self(bot))
+    return bot.add_cog(Self(bot))

@@ -260,4 +260,4 @@ class Exec(commands.Cog):
                 await ctx.send("*Finished*")
 
 def setup(bot):
-    bot.add_cog(Exec(bot))
+    return bot.add_cog(Exec(bot))

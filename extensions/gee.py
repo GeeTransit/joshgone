@@ -73,4 +73,4 @@ class Gee(commands.Cog):
         await ctx.send(f"{x}")
 
 def setup(bot):
-    bot.add_cog(Gee(bot))
+    return bot.add_cog(Gee(bot))
