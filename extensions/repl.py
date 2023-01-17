@@ -72,9 +72,10 @@ import warnings
 
 class REPLNoStopThread(threading.Thread):
 
-    def __init__(self, console):
+    def __init__(self, console, loop):
         super().__init__()
         self.console = console
+        self.loop = loop
 
     def run(self):
         try:
@@ -95,9 +96,10 @@ class REPLNoStopThread(threading.Thread):
                 message=r'^coroutine .* was never awaited$',
                 category=RuntimeWarning)
 
-            # The main thread will stop it. Otherwise, this chokes the cleanup
-            # code in discord.py.
-            # loop.call_soon_threadsafe(loop.stop)
+            # Clean up the bot
+            def _raise_keyboard_interrupt():
+                raise KeyboardInterrupt
+            self.loop.call_soon_threadsafe(_raise_keyboard_interrupt)
 
 
 class Repl(commands.Cog):
@@ -114,7 +116,7 @@ class Repl(commands.Cog):
         variables = globals()
         loop = asyncio.get_running_loop()
         console = AsyncIOInteractiveConsole(variables, loop)
-        self.thread = REPLNoStopThread(console)
+        self.thread = REPLNoStopThread(console, loop)
         self.thread.daemon = True
         self.thread.start()
 
