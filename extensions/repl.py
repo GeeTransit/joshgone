@@ -1,5 +1,4 @@
 import asyncio
-import asyncio.__main__ as asyncio_main
 
 # Imported so the REPL can use them
 import discord
@@ -7,15 +6,19 @@ from discord.ext import commands
 
 
 # Subclass of AsyncIOInteractiveConsole that doesn't use globals
+import ast
+import code
 import types
 import inspect
 import concurrent.futures
 import asyncio.futures
 
-class AsyncIOInteractiveConsole(asyncio_main.AsyncIOInteractiveConsole):
+class AsyncIOInteractiveConsole(code.InteractiveConsole):
 
     def __init__(self, locals, loop):
-        super().__init__(locals, loop)
+        super().__init__(locals)
+        self.compile.compiler.flags |= ast.PyCF_ALLOW_TOP_LEVEL_AWAIT
+        self.loop = loop
         self.future = None
         self.interrupted = False
 
@@ -63,10 +66,11 @@ class AsyncIOInteractiveConsole(asyncio_main.AsyncIOInteractiveConsole):
 
 # Subclass of REPLThread that doesn't stop the loop (joshgone.py handles that)
 # Adapted from: Python39/Lib/asyncio/__main__.py
+import threading
 import sys
 import warnings
 
-class REPLNoStopThread(asyncio_main.REPLThread):
+class REPLNoStopThread(threading.Thread):
 
     def __init__(self, console):
         super().__init__()
@@ -108,7 +112,7 @@ class Repl(commands.Cog):
             return
         # Starts the REPL using asyncio's code
         variables = globals()
-        loop = asyncio_main.loop = asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
         console = AsyncIOInteractiveConsole(variables, loop)
         self.thread = REPLNoStopThread(console)
         self.thread.daemon = True
