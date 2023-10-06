@@ -13,7 +13,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
 
     # Cached to be a tad bit faster (removes float conversion step)
     @s.lru_iter_cache(maxsize=16)
-    def instrument_sound_at(instrument, note_index, length):
+    def instrument_sound_at(instrument, note_index, length, note_volume):
         if 13 <= instrument <= 16:
             # 13=sine, 14=square, 15=sawtooth, 16=triangle
             # Ignored because I'm too lazy to find their actual volume
@@ -23,6 +23,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
             return
         chunks = instrument_chunks_at(instrument, note_index)
         volume = settings["volume"][instrument]
+        volume *= note_volume
         yield from ((x+y)/2*volume for x, y in s.unchunked(chunks))
 
     # Cached so that we don't start up 2000 FFmpeg processes
@@ -66,6 +67,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
                 note_info["instrument"],
                 note_indices[note_info["type"].lower()],
                 note_info["length"],
+                note_info["volume"],
             )
             # sound = s.volume(note_info["volume"], sound)
             playing_sounds[next_note_info_index] = sound
