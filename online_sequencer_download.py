@@ -1,5 +1,6 @@
 import argparse
 import json
+import ast
 import asyncio
 import os
 import subprocess
@@ -25,10 +26,18 @@ async def get_instrument_settings():
     match = re.search(r"var settings=({(?:(?!};).)*});", response.text)
     if match is None:
         raise RuntimeError("settings JSON not found")
-    return json.loads(match[1])
+    settings = json.loads(match[1])
+    match_samples = re.search(r"const kSampleMap=([^;]*);", response.text)
+    if match_samples:
+        # The keys are ints but luckily it can be interpreted as a Python dict
+        kSampleMap = ast.literal_eval(match_samples[1])
+        settings["kSampleMap"] = {str(k): v for k, v in kSampleMap.items()}
+    return settings
 
-def download_instrument_audio(directory, instrument):
+def download_instrument_audio(directory, instrument, *, sampler=False):
     url = f"https://onlinesequencer.net/app/instruments/{instrument}.ogg?v=12"
+    if sampler:
+        url = url.replace("instruments/", "instruments/sampler/")
     destination = f"{directory}/{instrument}.ogg"
     subprocess.run([
         "ffmpeg",
@@ -57,6 +66,10 @@ def main(directory):
     )
     for instrument, original_bpm in enumerate(original_bpms):
         if original_bpm == 0:
+            if str(instrument) in instrument_settings.get("kSampleMap", {}):
+                print(f"Downloading audio file for instrument {instrument}...")
+                download_instrument_audio(directory, instrument, sampler=True)
+                continue
             print(f"Skipping instrument {instrument}...")
             continue
         print(f"Downloading audio file for instrument {instrument}...")
