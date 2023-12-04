@@ -112,8 +112,20 @@ class Repl(commands.Cog):
         # Make sure the REPL isn't initialized twice
         if self.thread is not None:
             return
+        # Ensures that the bot has an execution scope (from exec.py)
+        if not hasattr(self.bot, "scope"):
+            # Initialize the scope with some modules and the bot
+            self.bot.scope = {
+                "bot": self.bot,
+                "asyncio": asyncio,
+                "discord": discord,
+                "commands": commands,
+                "self_process": self_process,
+                "process": process,
+                "__builtins__": __builtins__,
+            }
         # Starts the REPL using asyncio's code
-        variables = globals()
+        variables = self.bot.scope
         loop = asyncio.get_running_loop()
         console = AsyncIOInteractiveConsole(variables, loop)
         self.thread = REPLNoStopThread(console, loop)
