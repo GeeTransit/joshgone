@@ -25,6 +25,8 @@ class Relay(commands.Cog):
         if message.author == self.bot.user:
             return
         gee = get(self.bot.users, name="GeeTransit")
+        if gee is None:
+            gee = get(self.bot.users, name="geetransit")
         if message.author != gee:
             # inbound
             await gee.send(f"{message.author}: {message.content}")
@@ -54,6 +56,8 @@ class Relay(commands.Cog):
         if not message.reference:
             return
         gee = get(self.bot.users, name="GeeTransit")
+        if gee is None:
+            gee = get(self.bot.users, name="geetransit")
         if message.author != gee:
             return
         ctx = await self.bot.get_context(message)
