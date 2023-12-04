@@ -27,12 +27,19 @@ class Self(commands.Cog):
             self.bot._old_process_commands = self.bot.process_commands
             async def _process_commands(message):
                 try:
-                    old_user = message.author._user
-                    message.author._user = copy.copy(message.author._user)
-                    message.author._user.id = -1
-                    message.author._user.bot = False
+                    if hasattr(message.author, "_user"):
+                        old_user = message.author._user
+                    else:
+                        old_user = message.author
+                    fake_user = copy.copy(old_user)
+                    fake_user.id = -1
+                    fake_user.bot = False
+                    message.author = fake_user
                     ctx = await self.bot.get_context(message)
-                    message.author._user = old_user
+                    if hasattr(message.author, "_user"):
+                        message.author._user = old_user
+                    else:
+                        message.author = old_user
                     return await self.bot.invoke(ctx)
                 except Exception as e:
                     print(f"Self cog error: {e!r}")
