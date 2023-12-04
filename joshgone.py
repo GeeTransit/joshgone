@@ -20,6 +20,14 @@ if hasattr(intents, "message_content"):
 # Our prefix is % or @joshgone
 command_prefix = commands.when_mentioned_or("%")
 
+# Use v1.x help command
+try:
+    help_command = commands.DefaultHelpCommand(
+        show_parameter_descriptions=False
+    )
+except TypeError:
+    help_command = None
+
 # Wrap a non-awaitable value with an awaitable
 def _wrap_async(value):
     if inspect.isawaitable(value):
@@ -72,6 +80,7 @@ def main():
         os.environ["JOSHGONE_TOKEN"],
         command_prefix=command_prefix,
         intents=intents,
+        help_command=help_command,
     )
 
 if __name__ == "__main__":
