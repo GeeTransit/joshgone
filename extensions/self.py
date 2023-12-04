@@ -15,6 +15,7 @@ class Self(commands.Cog):
             # For discord.py v2.x
             self.bot.process_commands = self.bot._old_process_commands
             del self.bot._old_process_commands
+            return
 
         self.bot.process_commands = self.bot._old_process_commands
         del self.bot._old_process_commands
@@ -37,6 +38,7 @@ class Self(commands.Cog):
                     print(f"Self cog error: {e!r}")
                 return await self.bot._old_process_commands(message)
             self.bot.process_commands = _process_commands
+            return
 
         self.bot._old_process_commands = self.bot.process_commands
         async def _process_commands(message):
