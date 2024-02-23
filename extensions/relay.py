@@ -80,7 +80,7 @@ class Relay(commands.Cog):
                 reply = await channel.fetch_message(mid)
 
             # Get original message sender
-            match = re.match(r"^([^#\n]+)#([0-9]{4}): ", reply.content)
+            match = re.match(r"^([^#\n]+)#(0|[0-9]{4}): ", reply.content)
             if not match:
                 raise ValueError("replier not found")
             self.user = get(
