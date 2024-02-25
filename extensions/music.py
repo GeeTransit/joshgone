@@ -361,14 +361,16 @@ class Music(commands.Cog):
         return source
 
     @commands.command()
-    async def join(self, ctx, *, channel: discord.VoiceChannel):
+    async def join(self, ctx, *, channel: typing.Optional[discord.VoiceChannel] = None):
         """Joins a voice channel
 
         Text output will be sent from the channel this command was run in. This
         command can be run multiple times safely.
 
         """
-        if ctx.voice_client is not None:
+        if channel is None:
+            await self.ensure_connected(ctx)
+        elif ctx.voice_client is not None:
             await ctx.voice_client.move_to(channel)
         else:
             await channel.connect()
