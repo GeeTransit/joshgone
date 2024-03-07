@@ -43,54 +43,36 @@ def make_sound(note_infos, *, settings, template, cache=None):
     # Sort by when each note is played
     note_infos = sorted(note_infos, key=lambda info: info["time"])
 
-    # Save some time
-    len_note_infos = len(note_infos)
-
     # Mapping between note types (A5, F#3) to note indices (69, 42)
     note_indices = s.make_indices_dict()
 
-    # State we need between points
-    playing_sounds = {}  # Dictionary of sounds (constant insert and removal)
-    remove_sound_keys = []  # Stack of sounds to be removed
-    next_note_info_index = 0  # The index of the next sound
+    # Helper function for getting each note's sound
+    def sound_for(note_info):
+        sound = instrument_sound_at(
+            note_info["instrument"],
+            note_indices[note_info["type"].lower()],
+        )
+        volume = settings["volume"][instrument] * note_info["volume"]
+        if volume != 1:
+            sound = s.volume(volume, sound)
+        return sound
 
-    # Loop until we break (we don't know how long the song is)
-    for current in s.passed(None):
+    # Create notes of the form (info, length). Note that length is how many
+    # seconds later the next node should start playing.
+    def _notes_generator(note_infos):
+        last_time = -9e999
+        for note_info in note_infos:
+            if last_time != note_info["time"]:
+                if last_time != -9e999:
+                    yield (None, note_info["time"] - last_time)
+                last_time = note_info["time"]
+            yield (note_info, 0)
 
-        # Add sounds that are ready to be played
-        while (
-            next_note_info_index < len_note_infos
-            and note_infos[next_note_info_index]["time"] <= current
-        ):
-            note_info = note_infos[next_note_info_index]
-            sound = instrument_sound_at(
-                note_info["instrument"],
-                note_indices[note_info["type"].lower()],
-            )
-            volume = settings["volume"][instrument] * note_info["volume"]
-            if volume != 1:
-                sound = s.volume(volume, sound)
-            playing_sounds[next_note_info_index] = sound
-            next_note_info_index += 1
-
-        # Add up all playing sounds to get the current point
-        point = 0
-        for note_info_index in playing_sounds:
-            try:
-                point += next(playing_sounds[note_info_index])
-            except StopIteration:
-                # Remove the sound later (can't remove while iterating)
-                remove_sound_keys.append(note_info_index)
-
-        # Remove keys flagged to be removed
-        while remove_sound_keys:
-            del playing_sounds[remove_sound_keys.pop()]
-
-        # Break out if nothing is playing and there are no more sounds to play
-        if not next_note_info_index < len_note_infos and not playing_sounds:
-            break
-
-        yield point
+    # Stable enough for our use (and also supports numpy)
+    return s._notes_to_sound(
+        _notes_generator(note_infos),
+        lambda note_info, _: sound_for(note_info),
+    )
 
 parser = argparse.ArgumentParser(
     description="Generates PCM 16-bit 48kHz sound from note infos in stdin.",
