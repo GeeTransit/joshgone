@@ -14,13 +14,6 @@ def make_sound(note_infos, *, settings, template, cache=None):
     # Cached to be a tad bit faster (removes float conversion step)
     @s.lru_iter_cache(maxsize=16)
     def instrument_sound_at(instrument, note_index):
-        if 13 <= instrument <= 16:
-            # 13=sine, 14=square, 15=sawtooth, 16=triangle
-            # Ignored because I'm too lazy to find their actual volume
-            return
-        if instrument == 41:
-            # I don't know what instrument this is lol
-            return
         chunks = instrument_chunks_at(instrument, note_index)
         yield from ((x+y)/2 for x, y in s.unchunked(chunks))
 
@@ -48,9 +41,18 @@ def make_sound(note_infos, *, settings, template, cache=None):
 
     # Helper function for getting each note's sound
     def sound_for(note_info):
+        instrument = note_info["instrument"]
+        note_index = note_indices[note_info["type"].lower()]
+        if 13 <= instrument <= 16:
+            # 13=sine, 14=square, 15=sawtooth, 16=triangle
+            # Ignored because I'm too lazy to find their actual volume
+            return s.passed(0)
+        if instrument == 41:
+            # I don't know what instrument this is lol
+            return s.passed(0)
         sound = instrument_sound_at(
-            note_info["instrument"],
-            note_indices[note_info["type"].lower()],
+            instrument,
+            note_index,
         )
         volume = settings["volume"][instrument] * note_info["volume"]
         if volume != 1:
