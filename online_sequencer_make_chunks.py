@@ -15,7 +15,10 @@ def make_sound(note_infos, *, settings, template, cache=None):
     @s.lru_iter_cache(maxsize=16)
     def instrument_sound_at(instrument, note_index):
         chunks = instrument_chunks_at(instrument, note_index)
-        yield from ((x+y)/2 for x, y in s.unchunked(chunks))
+        sound = s.unchunked(chunks)
+        if not getattr(s, "has_numpy", False):
+            return ((x+y)/2 for x, y in sound)
+        return s.single(sound)
 
     # Cached so that we don't start up 2000 FFmpeg processes
     @s.lru_iter_cache(cache=cache)
