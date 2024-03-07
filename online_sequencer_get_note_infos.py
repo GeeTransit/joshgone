@@ -5,12 +5,14 @@ import asyncio
 import enum
 import re
 import base64
-from typing import Optional
-from dataclasses import dataclass
+from typing import Optional, Iterable
+from dataclasses import dataclass, fields
 
 import httpx
 from pure_protobuf.dataclasses_ import field, optional_field, message
 from pure_protobuf.types import int32
+
+import protobufast as pf
 
 # - Protobuf schemas
 # Converted from https://onlinesequencer.net/sequence.proto and
@@ -95,8 +97,33 @@ def _int_or_float(num):
         return round(num)
     return num
 
-def _get_notes(song):
-    """Converts a song into a list of notes"""
+def _field_num_of(cls, name: str) -> int:
+    for field in fields(cls):
+        if field.name == name:
+            return field.metadata["number"]
+    raise AttributeError(f'no message field named: {name}')
+
+def _skim_field(field: int, msgs: Iterable) -> Iterable:
+    for msg in msgs:
+        if msg[2] == field:
+            yield msg
+
+def _last_field(field: int, msgs: Iterable):
+    msg = None
+    for msg in _skim_field(field, msgs):
+        pass
+    return msg
+
+def _get_notes(data) -> Iterable[dict]:
+    """Converts raw song data into a sorted iterable of notes"""
+    settings_num = _field_num_of(Sequence, "settings")
+    settings = SequenceSettings.loads(b"".join(
+        data[msg[3]:msg[0]]
+        for msg in _skim_field(settings_num, pf.skim(data, 0, len(data)))
+    ))
+    song = Sequence()
+    song.settings = settings
+
     bpm = song.settings.bpm
     all_volume = 1 - song.settings.one_minus_volume
     # Convert to a dict for constant instrument settings retrieval
@@ -105,8 +132,26 @@ def _get_notes(song):
         for kv in song.settings.instruments
         if kv.key is not None and kv.value is not None
     }
-    return [
-        {
+
+    # Sort note messages by time (without loading all fields of a note)
+    notes_num = _field_num_of(Sequence, "notes")
+    time_num = _field_num_of(Note, "time")
+    def msg_note_time(msg):
+        time_msg = _last_field(time_num, pf.skim(data, msg[3], msg[0]))
+        if time_msg is None:
+            return 0.0
+        assert time_msg[1] == 5
+        return pf.to_float(data, time_msg[3], time_msg[0])
+    note_msgs = sorted(
+        _skim_field(notes_num, pf.skim(data, 0, len(data))),
+        key=msg_note_time,
+    )
+
+    # Return a iterator of note infos sorted by time
+    first = True
+    for msg in note_msgs:
+        note = Note.loads(data[msg[3]:msg[0]])
+        note_info = {
             "instrument": note.instrument,
             "type": note.type.name.replace("S", "#"),
             "time": _int_or_float(note.time * (60/bpm/4)),
@@ -126,21 +171,26 @@ def _get_notes(song):
                 else 0
             ),
         }
-        for note in song.notes
-    ]
+        if first:
+            first = False
+            note_info["sorted"] = 1
+        yield note_info
 
 # - "Public" API
 
-async def get_note_infos(url):
+async def get_note_infos_stream(url):
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
         text = response.text
     def _get_note_infos():
         data = _extract_data(text)
-        song = Sequence.loads(data)
-        note_infos = _get_notes(song)
+        note_infos = _get_notes(data)
         return note_infos
     return await asyncio.to_thread(_get_note_infos)
+
+async def get_note_infos(url):
+    infos = await get_note_infos_stream(url)
+    return await asyncio.to_thread(lambda: list(infos))
 
 # - Command line
 
@@ -154,5 +204,13 @@ parser.add_argument(
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    note_infos = asyncio.run(get_note_infos(args.url))
-    json.dump(note_infos, sys.stdout, separators=[",",":"])
+    note_infos = asyncio.run(get_note_infos_stream(args.url))
+    sys.stdout.write("[")
+    first = True
+    for note_info in note_infos:
+        if first:
+            first = False
+        else:
+            sys.stdout.write(",")
+        json.dump(note_info, sys.stdout, separators=(",", ":"))
+    sys.stdout.write("]")
