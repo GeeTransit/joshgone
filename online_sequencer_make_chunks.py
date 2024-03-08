@@ -34,6 +34,8 @@ def make_sound(note_infos, *, settings, template, cache=None):
         start = (note_index - settings["min"][instrument] - 24) * length
         if not getattr(s, "has_av", False):
             args = s.make_ffmpeg_section_args(filename, start, length)
+            if "-nostdin" not in args:
+                args = ["-nostdin", *args]
             process = s.create_ffmpeg_process(*args)
             yield from s.chunked_ffmpeg_process(process)
             return
