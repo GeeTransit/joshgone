@@ -120,6 +120,11 @@ def _get_notes(song):
                     else 1
                 )
             ),
+            "detune": _int_or_float(
+                instrument_settings[note.instrument].detune
+                if note.instrument in instrument_settings
+                else 0
+            ),
         }
         for note in song.notes
     ]
