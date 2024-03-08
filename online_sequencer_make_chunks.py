@@ -53,9 +53,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
         instrument = note_info["instrument"]
         note_index = note_indices[note_info["type"].lower()]
         if 13 <= instrument <= 16:
-            # 13=sine, 14=square, 15=sawtooth, 16=triangle
-            # Ignored because I'm too lazy to find their actual volume
-            return s.passed(0)
+            return synth_sound_for(note_info)
         # Skip unknown instruments
         if instrument >= len(settings["volume"]):
             return s.passed(0)
@@ -98,6 +96,34 @@ def make_sound(note_infos, *, settings, template, cache=None):
             sound = s.cut(length + fade_time, sound)
             sound = s.fade(sound, fadein=0, fadeout=fade_time)
         return sound
+
+    # Mapping from note types to frequencies
+    frequencies = s.make_frequencies_dict()
+
+    def synth_sound_for(note_info):
+        # 13=sine, 14=square, 15=sawtooth, 16=triangle
+        instrument = note_info["instrument"]
+        assert 13 <= instrument <= 16
+        note_index = note_indices[note_info["type"].lower()]
+        length = note_info["length"]
+
+        # Note that two synths with the same frequency playing together
+        # have twice the volume (in OSeq it's the same volume). Also note
+        # that we fade at the end of each note (in OSeq the synth keeps
+        # playing if there's a note afterwards but sometimes it makes a pop
+        # sound).
+        freq = frequencies[note_index - settings["min"][instrument]]
+        func = (s.sine, s.square, s.sawtooth, s.triangle)[instrument - 13]
+        sound = func(freq)
+
+        volume = settings["volume"][instrument] * note_info["volume"]
+        if instrument == 14:
+            # Square waves are between -0.5 and 0.5 in OSeq
+            volume *= 0.5
+        if volume != 1:
+            sound = s.volume(volume, sound)
+
+        return s.fade(s.cut(length, sound))
 
     # Create notes of the form (info, length). Note that length is how many
     # seconds later the next node should start playing.
