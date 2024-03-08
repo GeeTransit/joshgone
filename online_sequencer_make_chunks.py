@@ -50,7 +50,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
 
     # Helper function for getting each note's sound
     def sound_for(note_info):
-        instrument = note_info["instrument"]
+        instrument = note_info["instrument"] % 10000
         note_index = note_indices[note_info["type"].lower()]
         if 13 <= instrument <= 16:
             return synth_sound_for(note_info)
@@ -102,7 +102,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
 
     def synth_sound_for(note_info):
         # 13=sine, 14=square, 15=sawtooth, 16=triangle
-        instrument = note_info["instrument"]
+        instrument = note_info["instrument"] % 10000
         assert 13 <= instrument <= 16
         note_index = note_indices[note_info["type"].lower()]
         length = note_info["length"]
