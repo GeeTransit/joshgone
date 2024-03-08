@@ -26,6 +26,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
         filename = template.replace("<>", str(instrument))
         length = 60 / (settings["originalBpm"][instrument] * 2)
         start = (note_index - settings["min"][instrument] - 24) * length
+        length -= 0.005  # Some files have noise at the end
         if not getattr(s, "has_av", False):
             args = s.make_ffmpeg_section_args(filename, start, length)
             if "-nostdin" not in args:
