@@ -24,8 +24,12 @@ def make_sound(note_infos, *, settings, template, cache=None):
     @s.lru_iter_cache(cache=cache)
     def instrument_chunks_at(instrument, note_index):
         filename = template.replace("<>", str(instrument))
-        length = 60 / (settings["originalBpm"][instrument] * 2)
-        start = (note_index - settings["min"][instrument] - 24) * length
+        if settings["originalBpm"][instrument] != 0:
+            length = 60 / (settings["originalBpm"][instrument] * 2)
+            start = (note_index - settings["min"][instrument] - 24) * length
+        else:
+            length = 41 if instrument == 44 else 12 if instrument == 54 else 16
+            start = note_index * length
         length -= 0.005  # Some files have noise at the end
         if not getattr(s, "has_av", False):
             args = s.make_ffmpeg_section_args(filename, start, length)
@@ -42,6 +46,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
 
     # Mapping between note types (A5, F#3) to note indices (69, 42)
     note_indices = s.make_indices_dict()
+    note_indices["c8"] = note_indices["b7"] + 1  # Sometimes is a sample note
 
     # Helper function for getting each note's sound
     def sound_for(note_info):
@@ -51,9 +56,35 @@ def make_sound(note_infos, *, settings, template, cache=None):
             # 13=sine, 14=square, 15=sawtooth, 16=triangle
             # Ignored because I'm too lazy to find their actual volume
             return s.passed(0)
-        if instrument == 41:
-            # I don't know what instrument this is lol
+        # Skip unknown instruments
+        if instrument >= len(settings["volume"]):
             return s.passed(0)
+        # Skip the custom synth
+        if instrument == 55:
+            return s.passed(0)
+        length = note_info["length"]
+        fade_time = 0
+        if str(instrument) in settings.get("kSampleMap", ()):
+            fade_time = 0.25  # Sounds close enough
+        if str(instrument) in settings.get("fadeTimes", ()):
+            fade_time = settings["fadeTimes"][str(instrument)]
+        detune = 0
+        if str(instrument) in settings.get("kSampleMap", ()):
+            # Skip sampled instruments if soundit can't resample
+            if not hasattr(s, "_resample_linear"):
+                return s.passed(0)
+            sample_notes = settings["kSampleMap"][str(instrument)]
+            if note_info["type"] in sample_notes:
+                note_index = sample_notes.index(note_info["type"])
+            else:
+                sample_note = min(sample_notes, key=lambda sample_note: (
+                    abs(note_index - note_indices[sample_note.lower()])
+                ))
+                # Positive means sample is too low, negative means too high
+                semitones_off = note_index - note_indices[sample_note.lower()]
+                # We want to resample more frequently if too high, vice versa
+                note_index = sample_notes.index(sample_note)
+                detune += semitones_off*100
         sound = instrument_sound_at(
             instrument,
             note_index,
@@ -61,6 +92,11 @@ def make_sound(note_infos, *, settings, template, cache=None):
         volume = settings["volume"][instrument] * note_info["volume"]
         if volume != 1:
             sound = s.volume(volume, sound)
+        if detune != 0:
+            sound = s._resample_linear(2**(detune/100/12), sound)
+        if fade_time != 0:
+            sound = s.cut(length + fade_time, sound)
+            sound = s.fade(sound, fadein=0, fadeout=fade_time)
         return sound
 
     # Create notes of the form (info, length). Note that length is how many
