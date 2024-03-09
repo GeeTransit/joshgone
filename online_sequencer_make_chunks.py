@@ -1,6 +1,7 @@
 import argparse
 import sys
 import json
+import inspect
 
 import soundit as s
 
@@ -31,12 +32,20 @@ def make_sound(note_infos, *, settings, template, cache=None):
             length = 41 if instrument == 44 else 12 if instrument == 54 else 16
             start = note_index * length
         length -= 0.005  # Some files have noise at the end
-        if not getattr(s, "has_av", False):
+        if not getattr(s, "has_av", False) or not hasattr(s, "file_chunks"):
             args = s.make_ffmpeg_section_args(filename, start, length)
             if "-nostdin" not in args:
                 args = ["-nostdin", *args]
             process = s.create_ffmpeg_process(*args)
-            yield from s.chunked_ffmpeg_process(process)
+            try:
+                yield from s.chunked_ffmpeg_process(process)
+            except RuntimeError as e:
+                # Older versions don't shut down the process properly
+                if (
+                    not hasattr(s, "_notes_to_sound")
+                    and "process ended" not in e.args[0]
+                ):
+                    raise
             return
         stream = s._chunked_libav_section(filename, start, length)
         yield from map(bytes, s.equal_chunk_stream(stream, 3840))
@@ -100,6 +109,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
     # Mapping from note types to frequencies
     frequencies = s.make_frequencies_dict()
 
+    synths_take_seconds = "seconds" in inspect.signature(s.sine).parameters
     def synth_sound_for(note_info):
         # 13=sine, 14=square, 15=sawtooth, 16=triangle
         instrument = note_info["instrument"] % 10000
@@ -117,7 +127,10 @@ def make_sound(note_infos, *, settings, template, cache=None):
         if detune != 0:
             freq *= 2**(detune/100/12)
         func = (s.sine, s.square, s.sawtooth, s.triangle)[instrument - 13]
-        sound = func(freq)
+        if synths_take_seconds:
+            sound = func(freq, seconds=length)
+        else:  # Newer soundit versions don't have the seconds arg
+            sound = s.cut(length, func(freq))
 
         volume = settings["volume"][instrument] * note_info["volume"]
         if instrument == 14:
@@ -126,7 +139,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
         if volume != 1:
             sound = s.volume(volume, sound)
 
-        return s.fade(s.cut(length, sound))
+        return s.fade(sound)
 
     # Create notes of the form (info, length). Note that length is how many
     # seconds later the next node should start playing.
@@ -139,8 +152,27 @@ def make_sound(note_infos, *, settings, template, cache=None):
                 last_time = note_info["time"]
             yield (note_info, 0)
 
-    # Stable enough for our use (and also supports numpy)
-    return s._notes_to_sound(
+    if hasattr(s, "_notes_to_sound"):
+        # Stable enough for our use (and also supports numpy)
+        notes_to_sound = s._notes_to_sound
+    else:
+        # Older versions don't play after the last note
+        def _layer_until_empty(note_infos, func):
+            sounds = yield from s._layer(note_infos, func)
+            while sounds:
+                result = 0
+                remove = []
+                for sound in sounds:
+                    try:
+                        result += next(sound)
+                    except StopIteration:
+                        remove.append(sound)
+                for sound in remove:
+                    sounds.remove(sound)
+                yield result
+        notes_to_sound = _layer_until_empty
+
+    return notes_to_sound(
         _notes_generator(note_infos),
         lambda note_info, _: sound_for(note_info),
     )
