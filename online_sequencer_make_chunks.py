@@ -66,7 +66,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
             fade_time = 0.25  # Sounds close enough
         if str(instrument) in settings.get("fadeTimes", ()):
             fade_time = settings["fadeTimes"][str(instrument)]
-        detune = 0
+        detune = note_info.get("detune", 0)
         if str(instrument) in settings.get("kSampleMap", ()):
             # Skip sampled instruments if soundit can't resample
             if not hasattr(s, "_resample_linear"):
@@ -106,6 +106,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
         assert 13 <= instrument <= 16
         note_index = note_indices[note_info["type"].lower()]
         length = note_info["length"]
+        detune = note_info.get("detune", 0)
 
         # Note that two synths with the same frequency playing together
         # have twice the volume (in OSeq it's the same volume). Also note
@@ -113,6 +114,8 @@ def make_sound(note_infos, *, settings, template, cache=None):
         # playing if there's a note afterwards but sometimes it makes a pop
         # sound).
         freq = frequencies[note_index - settings["min"][instrument]]
+        if detune != 0:
+            freq *= 2**(detune/100/12)
         func = (s.sine, s.square, s.sawtooth, s.triangle)[instrument - 13]
         sound = func(freq)
 
