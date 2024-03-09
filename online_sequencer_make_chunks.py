@@ -4,6 +4,7 @@ import json
 import inspect
 
 import soundit as s
+import jsonfast as jf
 
 def make_chunks(infos, **kwargs):
     """Generate chunks from note infos"""
@@ -50,8 +51,28 @@ def make_sound(note_infos, *, settings, template, cache=None):
         stream = s._chunked_libav_section(filename, start, length)
         yield from map(bytes, s.equal_chunk_stream(stream, 3840))
 
+    # Keep first note info (has metadata about song)
+    note_infos = iter(note_infos)
+    first_note_info = next(note_infos, None)
+
+    # Ensure note times are increasing
+    if first_note_info and first_note_info.get("sorted"):
+        def _ensure_increasing_note_time(note_infos):
+            yield first_note_info
+            last_time = first_note_info["time"]
+            for i, note_info in enumerate(note_infos):
+                if note_info["time"] < last_time:
+                    raise ValueError(f'note info is not sorted: {i}')
+                yield note_info
+                last_time = note_info["time"]
+        note_infos = _ensure_increasing_note_time(note_infos)
     # Sort by when each note is played
-    note_infos = sorted(note_infos, key=lambda info: info["time"])
+    else:
+        all_note_infos = []
+        if first_note_info is not None:
+            note_infos.append(first_note_info)
+        all_note_infos.extend(note_infos)
+        note_infos = sorted(note_infos, key=lambda info: info["time"])
 
     # Mapping between note types (A5, F#3) to note indices (69, 42)
     note_indices = s.make_indices_dict()
@@ -177,6 +198,41 @@ def make_sound(note_infos, *, settings, template, cache=None):
         lambda note_info, _: sound_for(note_info),
     )
 
+def _stream_read_json_array(next_func):
+    # Calls next_func for more bytes from the stream, should return empty
+    # bytes on EOF. Yields elements of an array.
+    data = bytearray()
+    chars = next_func()
+    data += chars
+    i = 0
+    def recall(read_func):
+        nonlocal i
+        while True:
+            try:
+                return read_func()
+            except (IndexError, ValueError):
+                chars = next_func()
+                if not chars:
+                    raise ValueError("unexpected EOF while parsing JSON")
+                del data[:i]
+                i = 0
+                data.extend(chars)
+    i, first_char = recall(lambda: jf.read_tag(data, i))
+    if first_char != b"["[0]:
+        raise ValueError("expected JSON note infos")
+    _, first_char = recall(lambda: jf.read_tag(data, i))
+    if first_char == b"]"[0]:
+        return
+    while True:
+        j, first_char, start = recall(lambda: jf.read(data, i))
+        assert first_char not in b",]", first_char
+        yield json.loads(data[i:j].decode())
+        i = j
+        i, split_char = recall(lambda: jf.read_tag(data, i))
+        assert split_char in b",:]}", split_char
+        if split_char == b"]"[0]:
+            break
+
 parser = argparse.ArgumentParser(
     description="Generates PCM 16-bit 48kHz sound from note infos in stdin.",
 )
@@ -195,7 +251,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with open(args.settings) as file:
         settings = json.load(file)
-    infos = json.load(sys.stdin)
+    infos = _stream_read_json_array(lambda: sys.stdin.buffer.read(2048))
     chunks = make_chunks(
         infos,
         settings=settings,
