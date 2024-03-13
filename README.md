@@ -75,30 +75,3 @@ hatch -e os run python online_sequencer_download.py oscollection
 ```
 
 If you want to use a different directory name, replace oscollection with the different name in the command, and set the JOSHGONE_OS_DIRECTORY environment variable to the different name.
-
-### PyPy
-
-[PyPy](https://www.pypy.org/) can significantly reduce lag in processing the sequence. If you have it installed, you can set the JOSHGONE_OS_PY_EXE environment variable to a different Python executable to run `online_sequencer_make_chunks.py` with.
-
-Note that the script requires some libraries, meaning you'll need a virtual environment for PyPy. You can write a script for your platform, but my suggestion is to use [pew](https://github.com/berdario/pew), a cross platform wrapper around virtual environments. Note that I've created a fork of the project with a new `pew inraw` command that works better with `subprocess.run` and the like. You can install it using one of the following commands (more info on pipx [here](https://pypa.github.io/pipx/)):
-
-```sh
-# On Windows
-pip install git+https://github.com/GeeTransit/pew.git
-# On Linux
-pip3 install git+https://github.com/GeeTransit/pew.git
-# With pipx
-pipx install git+https://github.com/GeeTransit/pew.git
-```
-
-You can then initialize a PyPy virtual environment by running the following:
-
-```sh
-# Create a new virtual environment using PyPy (-p pypy3) and don't enter it (-d)
-pew new joshgone-pypy -p pypy3 -d
-# Install packages in the virtual environment
-pew inraw joshgone-pypy pip install -r requirements-soundit.txt
-```
-
-You can then set JOSHGONE_OS_PY_EXE to `pew inraw joshgone-pypy pypy3` for it to run PyPy inside the virtual environment, where it can access the libraries it needs.
-
