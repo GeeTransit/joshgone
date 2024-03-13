@@ -6,7 +6,7 @@
 # - discord.py[voice]
 # - setuptools
 # - simpleeval>=0.9.11
-# - soundit>=0.2
+# - soundit
 # - yoyo-migrations
 # - yt-dlp
 #
@@ -63,7 +63,7 @@ simpleeval==0.9.11
     # via hatch.envs.default
 six==1.15.0
     # via pynacl
-soundit==0.2.1
+soundit==0.4
     # via hatch.envs.default
 sqlparse==0.4.1
     # via yoyo-migrations

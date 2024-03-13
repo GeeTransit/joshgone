@@ -12,7 +12,7 @@ dependencies = [
 	"discord.py[voice]",
 	"setuptools",  # yoyo-migrations needs it but didn't declare it :/
 	"simpleeval>=0.9.11",  # Earliest version that works with setuptools>=58
-	"soundit>=0.2",
+	"soundit",
 	"yoyo-migrations",
 	"yt-dlp",
 ]
@@ -21,6 +21,8 @@ dependencies = [
 lock-filename = "requirements-os.txt"
 pip-compile-constraint = "default"
 extra-dependencies = [
+	"av",
 	"httpx",
-	"pure-protobuf",
+	"numpy",
+	"pure-protobuf<3",
 ]
