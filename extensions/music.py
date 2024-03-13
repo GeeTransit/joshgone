@@ -255,7 +255,7 @@ class Music(commands.Cog):
             id_ = int(url)
         # Create the url and get note infos
         url = f"{self.ONLINE_SEQUENCER_URL_PREFIX}{id_}"
-        note_infos = await os_note_infos.get_note_infos(url)
+        note_infos = await os_note_infos.get_note_infos_stream(url)
         # Start another process to convert these into a sound
         executable, *args = shlex.split(self.os_python_executable)
         process = await asyncio.to_thread(
@@ -272,7 +272,15 @@ class Music(commands.Cog):
         # Start a background task to send in note infos through stdin
         asyncio.create_task(asyncio.to_thread(
             lambda: (
-                process.stdin.write(json.dumps(note_infos).encode()),
+                process.stdin.write(b"["),
+                [
+                    None
+                    for i, note_info in enumerate(note_infos)
+                    if [process.stdin.write(b",") if i != 0 else None]
+                    if [process.stdin.write(json.dumps(note_info).encode())]
+                    if False
+                ],
+                process.stdin.write(b"]"),
                 process.stdin.close(),
             )
         ))
