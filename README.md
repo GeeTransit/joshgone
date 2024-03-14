@@ -75,3 +75,9 @@ hatch -e os run python online_sequencer_download.py oscollection
 ```
 
 If you want to use a different directory name, replace oscollection with the different name in the command, and set the JOSHGONE_OS_DIRECTORY environment variable to the different name.
+
+## Development
+
+JoshGone uses Hatch mainly to manage virtual environments. The `requirements.txt` file is generated from the `default` environment by a [Hatch plugin](https://juftin.com/hatch-pip-compile/), and likewise with the `requirements-os.txt` from the `os` environment.
+
+To add a dependency, go to `hatch.toml` and add to the `dependencies` list. The next time you enter the environment, the corresponding requirements file will be updated.
