@@ -11,9 +11,34 @@ git clone https://github.com/GeeTransit/joshgone
 cd joshgone
 ```
 
-Install [Python](https://www.python.org/downloads/) (minimum is 3.9).
+Install [Python](https://www.python.org/downloads/) (minimum is 3.9) and create the virtual environment by running:
 
-Install [Hatch](https://hatch.pypa.io/latest/install/) globally (I recommend using [pipx](https://pipx.pypa.io/stable/installation/)).
+```sh
+# On Windows
+python -m venv .venv
+# On Linux
+python3 -m venv .venv
+```
+
+To enter the virtual environment, run the following. To leave the virtual environment, type `deactivate` and press enter.
+
+```sh
+# On Windows
+call .venv\Scripts\activate.bat
+# On Linux
+source .venv/bin/activate
+```
+
+Install all dependencies by entering the virtual environment and running:
+
+```sh
+# On Windows
+pip install -r requirements.txt
+# On Linux
+pip3 install -r requirements.txt
+```
+
+If installing the dependencies failed, this is likely because the `requirements.txt` file was generated on Windows. You can try manually `pip install`ing the dependencies listed in `hatch.toml` under `[envs.default]`.
 
 ## Config
 
@@ -42,10 +67,10 @@ export NAME=value
 
 ## More Setup
 
-Create or update the database to the newest format by running:
+Create or update the database to the newest format by entering the virtual environment and running:
 
 ```sh
-hatch run yoyo apply
+yoyo apply
 ```
 
 For playing music to work, you need to have [FFmpeg](http://ffmpeg.org/) on your PATH environment variable. Verify by running:
@@ -56,28 +81,50 @@ ffmpeg -version
 
 ## Usage
 
-Run:
+Enter the virtual environment and run:
 
 ```sh
-hatch run python joshgone.py
+# On Windows
+python joshgone.py
+# On Linux
+python3 joshgone.py
 ```
 
 ## Online Sequencer
 
 *Note: This is very experimental.*
 
-For playing music from Online Sequencer to work, use `hatch -e os ...` instead of `hatch ...` to use the OS environment (which has extra dependencies). For more info on how it gets the sequence notes, check out `online_sequencer_get_note_infos.py`.
+For playing music from Online Sequencer to work, you need to install from `requirements-os.txt` instead of `requirements.txt`. For more info on how it gets the sequence notes, check out `online_sequencer_get_note_infos.py`.
 
-Next, run the following command. This will download the instrument settings and the audio file for each instrument into a directory named oscollection.
+Next, run the following command in the virtual environment. This will download the instrument settings and the audio file for each instrument into a directory named oscollection.
 
 ```sh
-hatch -e os run python online_sequencer_download.py oscollection
+# On Windows
+python online_sequencer_download.py oscollection
+# On Linux
+python3 online_sequencer_download.py oscollection
 ```
 
 If you want to use a different directory name, replace oscollection with the different name in the command, and set the JOSHGONE_OS_DIRECTORY environment variable to the different name.
 
 ## Development
 
+Install [Hatch](https://hatch.pypa.io/latest/install/) globally (I recommend using [pipx](https://pipx.pypa.io/stable/installation/)).
+
 JoshGone uses Hatch mainly to manage virtual environments. The `requirements.txt` file is generated from the `default` environment by a [Hatch plugin](https://juftin.com/hatch-pip-compile/), and likewise with the `requirements-os.txt` from the `os` environment.
+
+To enter a Hatch-managed virtual environment, run the following. To leave the virtual environment, type `exit` and press enter.
+
+```sh
+hatch --env default shell
+```
+
+The environment defaults to `default`, so you can omit `--env default` if you wish.
+
+To run a command inside an environment, there is a faster way using the `run` subcommand:
+
+```sh
+hatch --env default run ...
+```
 
 To add a dependency, go to `hatch.toml` and add to the `dependencies` list. The next time you enter the environment, the corresponding requirements file will be updated.
