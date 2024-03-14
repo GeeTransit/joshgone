@@ -13,7 +13,7 @@ cd joshgone
 
 Install [Python](https://www.python.org/downloads/) (minimum is 3.9).
 
-Install [Hatch](https://ofek.dev/hatch/latest/install/) globally (I recommend using [pipx](https://pypa.github.io/pipx/installation/)) (also note that Hatch is in prerelease; pass `--pre` where necessary).
+Install [Hatch](https://hatch.pypa.io/latest/install/) globally (I recommend using [pipx](https://pipx.pypa.io/stable/installation/)).
 
 ## Config
 
