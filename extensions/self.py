@@ -26,6 +26,7 @@ class Self(commands.Cog):
             # For discord.py v2.x
             self.bot._old_process_commands = self.bot.process_commands
             async def _process_commands(message):
+                old_author = message.author
                 try:
                     if hasattr(message.author, "_user"):
                         old_user = message.author._user
@@ -36,13 +37,11 @@ class Self(commands.Cog):
                     fake_user.bot = False
                     message.author = fake_user
                     ctx = await self.bot.get_context(message)
-                    if hasattr(message.author, "_user"):
-                        message.author._user = old_user
-                    else:
-                        message.author = old_user
+                    message.author = old_author
                     return await self.bot.invoke(ctx)
                 except Exception as e:
                     print(f"Self cog error: {e!r}")
+                    message.author = old_author
                 return await self.bot._old_process_commands(message)
             self.bot.process_commands = _process_commands
             return
