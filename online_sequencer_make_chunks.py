@@ -136,7 +136,7 @@ def make_sound(note_infos, *, settings, template, cache=None):
         instrument = note_info["instrument"] % 10000
         assert 13 <= instrument <= 16
         note_index = note_indices[note_info["type"].lower()]
-        length = note_info["length"]
+        length = note_info["length"] + 0.005
         detune = note_info.get("detune", 0)
 
         # Note that two synths with the same frequency playing together
