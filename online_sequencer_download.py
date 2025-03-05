@@ -42,6 +42,7 @@ def download_instrument_audio(directory, instrument, *, sampler=False):
     subprocess.run([
         "ffmpeg",
         "-nostdin",
+        "-reconnect", "1",
         "-y",
         "-loglevel", "error",
         "-i", url,
