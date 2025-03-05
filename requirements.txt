@@ -8,7 +8,7 @@
 # - simpleeval>=0.9.11
 # - soundit
 # - yoyo-migrations
-# - yt-dlp
+# - yt-dlp[default]
 #
 
 aiohttp==3.8.3
@@ -23,9 +23,9 @@ async-timeout==4.0.2
     # via aiohttp
 attrs==20.3.0
     # via aiohttp
-brotli==1.0.9
+brotli==1.1.0
     # via yt-dlp
-certifi==2021.10.8
+certifi==2025.1.31
     # via
     #   requests
     #   yt-dlp
@@ -49,15 +49,15 @@ multidict==5.1.0
     # via
     #   aiohttp
     #   yarl
-mutagen==1.45.1
+mutagen==1.47.0
     # via yt-dlp
 pycparser==2.20
     # via cffi
-pycryptodomex==3.20.0
+pycryptodomex==3.21.0
     # via yt-dlp
 pynacl==1.4.0
     # via discord-py
-requests==2.31.0
+requests==2.32.3
     # via yt-dlp
 simpleeval==0.9.11
     # via hatch.envs.default
@@ -73,17 +73,17 @@ typing-extensions==4.0.0
     # via
     #   aiosqlite
     #   soundit
-urllib3==2.1.0
+urllib3==2.3.0
     # via
     #   requests
     #   yt-dlp
-websockets==12.0
+websockets==15.0
     # via yt-dlp
 yarl==1.6.3
     # via aiohttp
 yoyo-migrations==7.3.2
     # via hatch.envs.default
-yt-dlp==2023.12.30
+yt-dlp==2025.2.19
     # via hatch.envs.default
 
 # The following packages are considered to be unsafe in a requirements file:
