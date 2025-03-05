@@ -32,6 +32,24 @@ async def get_instrument_settings():
         # The keys are ints but luckily it can be interpreted as a Python dict
         kSampleMap = ast.literal_eval(match_samples[1])
         settings["kSampleMap"] = {str(k): v for k, v in kSampleMap.items()}
+    match_sampler = re.search(
+        r"getSamplerTimePerNote\([^)]+\)\{((?:[^{}]|\{[^{}]*\})*)\}",
+        response.text
+    )
+    if match_sampler:
+        # Trace the logic to get the sampler note lengths for each instrument
+        lengths = {}
+        instruments = []
+        for part in re.findall(r"==[0-9]+|return [0-9]+", match_sampler[1]):
+            if part.startswith("=="):
+                instruments.append(int(part[2:]))
+            else:
+                length = int(part.split()[1])
+                if not instruments:
+                    lengths[-1] = length  # Default length
+                else:
+                    while instruments: lengths[instruments.pop()] = length
+        settings["getSamplerTimePerNote"] = lengths
     return settings
 
 def download_instrument_audio(directory, instrument, *, sampler=False):

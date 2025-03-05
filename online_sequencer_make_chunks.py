@@ -31,6 +31,12 @@ def make_sound(note_infos, *, settings, template, cache=None):
             start = (note_index - settings["min"][instrument] - 24) * length
         else:
             length = 41 if instrument == 44 else 12 if instrument == 54 else 16
+            sample_lengths = settings.get("getSamplerTimePerNote")
+            if sample_lengths is not None:
+                if str(instrument) in sample_lengths:
+                    length = sample_lengths[str(instrument)]
+                elif "-1" in sample_lengths:
+                    length = sample_lengths["-1"]
             start = note_index * length
         length -= 0.005  # Some files have noise at the end
         if not getattr(s, "has_av", False) or not hasattr(s, "file_chunks"):
