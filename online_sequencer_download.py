@@ -26,7 +26,7 @@ async def get_instrument_settings():
     match = re.search(r"var settings=({(?:(?!};).)*});", response.text)
     if match is None:
         raise RuntimeError("settings JSON not found")
-    settings = json.loads(match[1])
+    settings = json.loads(match[1].replace("!1", "false"))  # why
     match_samples = re.search(r"const kSampleMap=([^;]*);", response.text)
     if match_samples:
         # The keys are ints but luckily it can be interpreted as a Python dict
